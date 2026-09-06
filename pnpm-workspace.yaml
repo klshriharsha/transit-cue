@@ -1,6 +1,9 @@
 allowBuilds:
   sharp: false
   unrs-resolver: false
+  # `supabase` runs a postinstall that downloads the platform CLI binary; it must be
+  # allowed to build or `pnpm db:*` scripts won't find the `supabase` executable.
+  supabase: true
 # vbb-hafas (transit station/departure lookups) depends on vbb-change-positions, which is
 # published only via GitHub, not the npm registry. pnpm blocks git-hosted transitive
 # dependencies by default as a supply-chain guard; this is a known, required part of

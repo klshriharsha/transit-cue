@@ -1,0 +1,16 @@
+-- Seed data for LOCAL development only. Runs after every `supabase db reset` /
+-- `pnpm db:reset`. Never referenced by production deploys (`pnpm db:push`).
+--
+-- Keep every statement idempotent (ON CONFLICT DO NOTHING) so repeated resets stay clean.
+-- Leave this file empty if you don't need fixture rows — the app creates its own data via
+-- the /api/subscribe and /api/config route handlers.
+
+-- Example (uncomment and adjust to work against a real push subscription):
+-- insert into subscriptions (id, endpoint, p256dh, auth)
+-- values (
+--   '00000000-0000-0000-0000-000000000001',
+--   'https://example.push.local/dev-endpoint',
+--   'dev-p256dh',
+--   'dev-auth'
+-- )
+-- on conflict (endpoint) do nothing;
