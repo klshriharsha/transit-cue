@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import styles from './page.module.css'
 import { usePushSubscription } from '@/hooks/usePushSubscription'
 import { useCommuteConfig, type Station } from '@/hooks/useCommuteConfig'
 
@@ -131,20 +130,14 @@ function StopField({ id, label, placeholder, variant, value, onChange }: StopFie
   const showDropdown = open && !value && query.trim().length >= MIN_QUERY_LENGTH
   const sourceNote = loading ? 'searching…' : results.length ? results.length + ' match' + (results.length === 1 ? '' : 'es') : 'no stations found'
 
+  const focusRing =
+    variant === 'from'
+      ? 'focus:border-teal-accent focus:bg-sand-1000 focus:shadow-[0_0_0_3px_oklch(0.55_0.11_195_/_13%)]'
+      : 'focus:border-amber-accent focus:bg-sand-1000 focus:shadow-[0_0_0_3px_oklch(0.6_0.13_60_/_13%)]'
+
   return (
-    <div style={{ position: 'relative' }}>
-      <label
-        htmlFor={id}
-        style={{
-          display: 'block',
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '10.5px',
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          color: 'oklch(0.6 0.01 85)',
-          marginBottom: '6px',
-        }}
-      >
+    <div className="relative">
+      <label htmlFor={id} className="mb-1.5 block font-mono text-[10.5px] tracking-[0.12em] text-sand-600 uppercase">
         {label}
       </label>
       <input
@@ -153,7 +146,7 @@ function StopField({ id, label, placeholder, variant, value, onChange }: StopFie
         autoComplete="off"
         placeholder={placeholder}
         value={query}
-        className={variant === 'from' ? styles.fromInput : styles.toInput}
+        className={`w-full rounded-xl border border-sand-880 bg-sand-990 p-[13px_14px] text-[15px] text-ink-240 outline-none ${focusRing}`}
         onChange={(e) => {
           const next = e.target.value
           setQuery(next)
@@ -177,33 +170,9 @@ function StopField({ id, label, placeholder, variant, value, onChange }: StopFie
             setOpen(false)
           }
         }}
-        style={{
-          width: '100%',
-          border: '1px solid oklch(0.88 0.012 85)',
-          borderRadius: '12px',
-          padding: '13px 14px',
-          fontSize: '15px',
-          color: 'oklch(0.24 0.015 80)',
-          background: 'oklch(0.99 0.004 85)',
-          outline: 'none',
-        }}
       />
       {showDropdown && (
-        <div
-          style={{
-            position: 'absolute',
-            zIndex: 40,
-            top: 'calc(100% + 6px)',
-            left: 0,
-            right: 0,
-            background: 'oklch(1 0 0)',
-            border: '1px solid oklch(0.88 0.012 85)',
-            borderRadius: '14px',
-            boxShadow: '0 12px 28px oklch(0.4 0.02 85 / 0.16)',
-            overflow: 'hidden',
-            animation: 'onw-in 140ms ease both',
-          }}
-        >
+        <div className="absolute top-[calc(100%+6px)] right-0 left-0 z-40 animate-in-140 overflow-hidden rounded-[14px] border border-sand-880 bg-sand-1000 shadow-dropdown">
           {results.map((s, i) => (
             <button
               key={s.id}
@@ -211,44 +180,15 @@ function StopField({ id, label, placeholder, variant, value, onChange }: StopFie
               onMouseDown={(e) => e.preventDefault()}
               onMouseEnter={() => setHighlight(i)}
               onClick={() => select(s)}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                border: 'none',
-                background: i === highlight ? 'oklch(0.96 0.02 195)' : 'oklch(1 0 0)',
-                padding: '11px 14px',
-                display: 'block',
-                borderBottom: '1px solid oklch(0.95 0.008 85)',
-              }}
+              className={`block w-full border-b border-sand-950 p-[11px_14px] text-left ${i === highlight ? 'bg-teal-hover-bg' : 'bg-sand-1000'}`}
             >
-              <span style={{ display: 'block', fontSize: '14.5px', fontWeight: 500, color: 'oklch(0.24 0.015 80)' }}>{s.name}</span>
-              <span
-                style={{
-                  display: 'block',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '11px',
-                  color: 'oklch(0.6 0.01 85)',
-                  marginTop: '2px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
+              <span className="block text-[14.5px] font-medium text-ink-240">{s.name}</span>
+              <span className="mt-0.5 block overflow-hidden font-mono text-[11px] text-ellipsis whitespace-nowrap text-sand-600">
                 stop
               </span>
             </button>
           ))}
-          <div
-            style={{
-              padding: '8px 14px',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '10px',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: 'oklch(0.7 0.01 85)',
-              background: 'oklch(0.98 0.005 85)',
-            }}
-          >
+          <div className="bg-sand-980 px-3.5 py-2 font-mono text-[10px] tracking-[0.08em] text-sand-700 uppercase">
             {sourceNote}
           </div>
         </div>
@@ -297,200 +237,67 @@ export default function OnwardPage() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: 'oklch(0.972 0.008 85)',
-        color: 'oklch(0.24 0.015 80)',
-        fontFamily: "'Instrument Sans', Helvetica, Arial, sans-serif",
-        paddingBottom: '64px',
-      }}
-    >
-      <header
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 60,
-          background: 'oklch(0.972 0.008 85 / 0.88)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid oklch(0.9 0.012 85)',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: '1080px',
-            margin: '0 auto',
-            padding: '0 clamp(16px, 4vw, 28px)',
-            height: '64px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '26px', height: '26px', borderRadius: '8px', background: 'oklch(0.55 0.11 195)', display: 'grid', placeItems: 'center' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '999px', background: 'oklch(0.99 0.01 195)' }} />
+    <div className="min-h-screen bg-sand-972 pb-16 font-sans text-ink-240">
+      <header className="sticky top-0 z-[60] border-b border-sand-900 bg-sand-972/88 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-[1080px] items-center gap-[14px] px-[clamp(16px,4vw,28px)]">
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-[26px] w-[26px] place-items-center rounded-lg bg-teal-accent">
+              <div className="h-2 w-2 rounded-full bg-teal-on-accent-alt" />
             </div>
-            <span style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '-0.02em' }}>Onward</span>
+            <span className="text-[18px] font-bold tracking-[-0.02em]">Onward</span>
           </div>
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '11px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              color: 'oklch(0.6 0.01 85)',
-              paddingTop: '2px',
-            }}
-          >
+          <span className="pt-0.5 font-mono text-[11px] tracking-[0.1em] text-sand-600 uppercase">
             transit nudges
           </span>
-          <div style={{ flex: 1 }} />
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '6px 12px 6px 10px',
-              border: '1px solid oklch(0.9 0.012 85)',
-              borderRadius: '999px',
-              background: 'oklch(1 0 0)',
-            }}
-          >
+          <div className="flex-1" />
+          <div className="flex items-center gap-2 rounded-full border border-sand-900 bg-sand-1000 py-1.5 pr-3 pl-2.5">
             <div
-              style={{
-                width: '7px',
-                height: '7px',
-                borderRadius: '999px',
-                background: on ? 'oklch(0.62 0.15 145)' : isGranted ? 'oklch(0.7 0.13 60)' : 'oklch(0.78 0.01 85)',
-              }}
+              className={`h-[7px] w-[7px] rounded-full ${on ? 'bg-green-accent' : isGranted ? 'bg-amber-muted' : 'bg-sand-780'}`}
             />
-            <span style={{ fontSize: '13px', fontWeight: 500, color: 'oklch(0.42 0.015 80)' }}>{on ? 'Notifications on' : isGranted ? 'Paused' : 'Not enabled'}</span>
+            <span className="text-[13px] font-medium text-ink-420">{on ? 'Notifications on' : isGranted ? 'Paused' : 'Not enabled'}</span>
           </div>
         </div>
       </header>
 
-      <main style={{ maxWidth: '1080px', margin: '0 auto', padding: 'clamp(20px, 4vw, 36px) clamp(16px, 4vw, 28px) 0' }}>
+      <main className="mx-auto max-w-[1080px] px-[clamp(16px,4vw,28px)] pt-[clamp(20px,4vw,36px)]">
         {needsPermission && (
-          <section
-            style={{
-              border: '1px solid oklch(0.9 0.012 85)',
-              borderRadius: '20px',
-              background: 'oklch(1 0 0)',
-              padding: 'clamp(20px, 4vw, 32px)',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 'clamp(18px, 3vw, 32px)',
-              alignItems: 'center',
-              boxShadow: '0 1px 2px oklch(0.5 0.02 85 / 0.05)',
-              marginBottom: '20px',
-            }}
-          >
-            <div style={{ flex: '1 1 300px', minWidth: 0 }}>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '11px',
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  color: 'oklch(0.58 0.11 60)',
-                  background: 'oklch(0.95 0.03 60)',
-                  padding: '5px 10px',
-                  borderRadius: '6px',
-                }}
-              >
+          <section className="mb-5 flex flex-wrap items-center gap-[clamp(18px,3vw,32px)] rounded-[20px] border border-sand-900 bg-sand-1000 p-[clamp(20px,4vw,32px)] shadow-card">
+            <div className="min-w-0 flex-[1_1_300px]">
+              <div className="inline-flex items-center gap-2 rounded-md bg-amber-tint px-2.5 py-[5px] font-mono text-[11px] tracking-[0.12em] text-amber-text uppercase">
                 step 1 of 2
               </div>
-              <h1
-                style={{
-                  fontSize: 'clamp(26px, 4.2vw, 36px)',
-                  lineHeight: 1.08,
-                  letterSpacing: '-0.03em',
-                  margin: '14px 0 10px',
-                  fontWeight: 700,
-                  textWrap: 'balance',
-                }}
-              >
+              <h1 className="mt-3.5 mb-2.5 text-[clamp(26px,4.2vw,36px)] leading-[1.08] font-bold tracking-[-0.03em] text-balance">
                 Never sprint for the bus again.
               </h1>
-              <p style={{ margin: 0, fontSize: '16px', lineHeight: 1.55, color: 'oklch(0.48 0.015 80)', maxWidth: '46ch', textWrap: 'pretty' }}>
+              <p className="max-w-[46ch] text-[16px] leading-[1.55] text-ink-480 text-pretty">
                 Onward pushes a notification at the exact minute you need to leave. Allow notifications once — everything after that lives on this device.
               </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', marginTop: '22px' }}>
+              <div className="mt-[22px] flex flex-wrap items-center gap-2.5">
                 <button
                   onClick={push.subscribe}
                   disabled={push.busy}
-                  className={styles.enableButton}
-                  style={{
-                    border: 'none',
-                    borderRadius: '12px',
-                    background: 'oklch(0.42 0.09 195)',
-                    color: 'oklch(0.99 0.005 195)',
-                    fontSize: '15px',
-                    fontWeight: 600,
-                    padding: '14px 22px',
-                    boxShadow: '0 1px 2px oklch(0.3 0.05 195 / 0.3)',
-                  }}
+                  className="rounded-xl border-0 bg-teal-deep p-[14px_22px] text-[15px] font-semibold text-teal-on-accent shadow-cta hover:bg-teal-deep-hover"
                 >
                   Enable notifications
                 </button>
-                <span style={{ fontSize: '13px', color: 'oklch(0.6 0.01 85)' }}>
+                <span className="text-[13px] text-sand-600">
                   {push.error ?? (push.permissionDenied ? 'Blocked in browser settings — re-allow there, then reload.' : 'One tap. No account, no email.')}
                 </span>
               </div>
             </div>
-            <div style={{ flex: '0 1 300px', minWidth: 0 }}>
-              <div
-                style={{
-                  border: '1px solid oklch(0.9 0.012 85)',
-                  borderRadius: '16px',
-                  background: 'oklch(0.975 0.006 85)',
-                  padding: '14px',
-                  display: 'flex',
-                  gap: '12px',
-                  alignItems: 'flex-start',
-                  animation: 'onw-in 400ms ease both',
-                }}
-              >
-                <div
-                  style={{
-                    width: '34px',
-                    height: '34px',
-                    borderRadius: '10px',
-                    background: 'oklch(0.55 0.11 195)',
-                    flex: 'none',
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '9px',
-                    fontWeight: 700,
-                    color: 'oklch(0.99 0.01 195)',
-                    letterSpacing: '0.04em',
-                  }}
-                >
+            <div className="min-w-0 flex-[0_1_300px]">
+              <div className="flex animate-in-400 items-start gap-3 rounded-2xl border border-sand-900 bg-sand-975 p-3.5">
+                <div className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[10px] bg-teal-accent font-mono text-[9px] font-bold tracking-[0.04em] text-teal-on-accent-alt">
                   ON
                 </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600 }}>Onward · now</div>
-                  <div style={{ fontSize: '13px', color: 'oklch(0.45 0.015 80)', lineHeight: 1.45, marginTop: '2px' }}>
+                <div className="min-w-0">
+                  <div className="text-[13px] font-semibold">Onward · now</div>
+                  <div className="mt-0.5 text-[13px] leading-[1.45] text-ink-450">
                     Leave in 6 min for the 8:15 — Congress Ave → 4th &amp; Guadalupe.
                   </div>
                 </div>
               </div>
-              <div
-                style={{
-                  textAlign: 'center',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '10px',
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  color: 'oklch(0.68 0.01 85)',
-                  marginTop: '10px',
-                }}
-              >
+              <div className="mt-2.5 text-center font-mono text-[10px] tracking-[0.1em] text-sand-680 uppercase">
                 example push
               </div>
             </div>
@@ -498,23 +305,10 @@ export default function OnwardPage() {
         )}
 
         {isGranted && (
-          <section
-            style={{
-              border: '1px solid oklch(0.9 0.012 85)',
-              borderRadius: '16px',
-              background: 'oklch(1 0 0)',
-              padding: '16px 18px',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '14px',
-              alignItems: 'center',
-              boxShadow: '0 1px 2px oklch(0.5 0.02 85 / 0.05)',
-              marginBottom: '20px',
-            }}
-          >
-            <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-              <div style={{ fontSize: '15px', fontWeight: 600 }}>Push notifications</div>
-              <div style={{ fontSize: '13.5px', color: 'oklch(0.52 0.015 80)', marginTop: '3px' }}>
+          <section className="mb-5 flex flex-wrap items-center gap-3.5 rounded-2xl border border-sand-900 bg-sand-1000 p-[16px_18px] shadow-card">
+            <div className="min-w-0 flex-[1_1_240px]">
+              <div className="text-[15px] font-semibold">Push notifications</div>
+              <div className="mt-[3px] text-[13.5px] text-ink-520">
                 {on
                   ? hasAlerts
                     ? 'Delivering 1 scheduled alert to this device.'
@@ -525,66 +319,39 @@ export default function OnwardPage() {
             <button
               onClick={() => (on ? push.unsubscribe() : push.subscribe())}
               aria-label="Toggle all notifications"
-              style={{ border: 'none', padding: 0, background: 'none', display: 'flex', alignItems: 'center', gap: '10px' }}
+              className="flex items-center gap-2.5 border-0 bg-transparent p-0"
             >
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'oklch(0.55 0.015 80)' }}>
+              <span className="font-mono text-[11px] tracking-[0.1em] text-ink-550 uppercase">
                 {on ? 'On' : 'Off'}
               </span>
               <span
-                style={{
-                  width: '48px',
-                  height: '28px',
-                  borderRadius: '999px',
-                  padding: '3px',
-                  display: 'block',
-                  transition: 'background 160ms ease',
-                  background: on ? 'oklch(0.55 0.11 195)' : 'oklch(0.86 0.012 85)',
-                }}
+                className={`block h-7 w-12 rounded-full p-[3px] [transition:background_160ms_ease] ${on ? 'bg-teal-accent' : 'bg-sand-860'}`}
               >
                 <span
-                  style={{
-                    width: '22px',
-                    height: '22px',
-                    borderRadius: '999px',
-                    background: 'oklch(1 0 0)',
-                    display: 'block',
-                    boxShadow: '0 1px 3px oklch(0.3 0.02 85 / 0.35)',
-                    transition: 'transform 160ms ease',
-                    transform: on ? 'translateX(20px)' : 'translateX(0)',
-                  }}
+                  className={`block h-[22px] w-[22px] rounded-full bg-sand-1000 shadow-knob [transition:transform_160ms_ease] ${on ? 'translate-x-5' : 'translate-x-0'}`}
                 />
               </span>
             </button>
           </section>
         )}
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-start' }}>
-          <section
-            style={{
-              flex: '1 1 360px',
-              minWidth: 0,
-              border: '1px solid oklch(0.9 0.012 85)',
-              borderRadius: '20px',
-              background: 'oklch(1 0 0)',
-              padding: 'clamp(18px, 3vw, 24px)',
-              boxShadow: '0 1px 2px oklch(0.5 0.02 85 / 0.05)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '18px' }}>
-              <h2 style={{ margin: 0, fontSize: '19px', fontWeight: 700, letterSpacing: '-0.02em' }}>New commute alert</h2>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'oklch(0.68 0.01 85)' }}>
+        <div className="flex flex-wrap items-start gap-5">
+          <section className="min-w-0 flex-[1_1_360px] rounded-[20px] border border-sand-900 bg-sand-1000 p-[clamp(18px,3vw,24px)] shadow-card">
+            <div className="mb-[18px] flex items-baseline gap-2.5">
+              <h2 className="text-[19px] font-bold tracking-[-0.02em]">New commute alert</h2>
+              <span className="font-mono text-[11px] tracking-[0.1em] text-sand-680 uppercase">
                 step 2
               </span>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'stretch' }}>
-              <div style={{ flex: 'none', width: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0 18px' }}>
-                <div style={{ width: '11px', height: '11px', borderRadius: '999px', border: '3px solid oklch(0.55 0.11 195)', background: 'oklch(1 0 0)', flex: 'none' }} />
-                <div style={{ flex: 1, width: 0, borderLeft: '2px dashed oklch(0.86 0.012 85)', margin: '4px 0' }} />
-                <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'oklch(0.6 0.13 60)', flex: 'none' }} />
+            <div className="flex items-stretch gap-3">
+              <div className="flex w-[14px] flex-none flex-col items-center pt-4 pb-[18px]">
+                <div className="h-[11px] w-[11px] flex-none rounded-full border-[3px] border-teal-accent bg-sand-1000" />
+                <div className="my-1 w-0 flex-1 border-l-2 border-dashed border-sand-860" />
+                <div className="h-[10px] w-[10px] flex-none rounded-[2px] bg-amber-accent" />
               </div>
 
-              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="flex min-w-0 flex-1 flex-col gap-3">
                 <StopField
                   key={'from-' + swapKey}
                   id="onw-from"
@@ -605,7 +372,7 @@ export default function OnwardPage() {
                 />
               </div>
 
-              <div style={{ flex: 'none', display: 'flex', alignItems: 'center' }}>
+              <div className="flex flex-none items-center">
                 <button
                   onClick={() => {
                     setFromStation(toStation)
@@ -613,39 +380,18 @@ export default function OnwardPage() {
                     setSwapKey((k) => k + 1)
                   }}
                   aria-label="Swap stops"
-                  className={styles.swapButton}
-                  style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '10px',
-                    border: '1px solid oklch(0.88 0.012 85)',
-                    background: 'oklch(0.99 0.004 85)',
-                    fontSize: '15px',
-                    color: 'oklch(0.45 0.015 80)',
-                    lineHeight: 1,
-                  }}
+                  className="h-[38px] w-[38px] rounded-[10px] border border-sand-880 bg-sand-990 text-[15px] leading-none text-ink-420 hover:border-sand-800 hover:bg-sand-950"
                 >
                   ⇅
                 </button>
               </div>
             </div>
 
-            <div style={{ height: '1px', background: 'oklch(0.93 0.01 85)', margin: '20px 0' }} />
+            <div className="my-5 h-px bg-sand-930" />
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', alignItems: 'flex-end' }}>
-              <div style={{ flex: '0 1 150px' }}>
-                <label
-                  htmlFor="onw-time"
-                  style={{
-                    display: 'block',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '10.5px',
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    color: 'oklch(0.6 0.01 85)',
-                    marginBottom: '6px',
-                  }}
-                >
+            <div className="flex flex-wrap items-end gap-[18px]">
+              <div className="flex-[0_1_150px]">
+                <label htmlFor="onw-time" className="mb-1.5 block font-mono text-[10.5px] tracking-[0.12em] text-sand-600 uppercase">
                   Push at (HH:MM)
                 </label>
                 <input
@@ -653,36 +399,14 @@ export default function OnwardPage() {
                   type="time"
                   value={pushTime}
                   onChange={(e) => setPushTime(e.target.value || '08:15')}
-                  className={styles.timeInput}
-                  style={{
-                    width: '100%',
-                    border: '1px solid oklch(0.88 0.012 85)',
-                    borderRadius: '12px',
-                    padding: '11px 12px',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '20px',
-                    fontWeight: 500,
-                    letterSpacing: '-0.01em',
-                    color: 'oklch(0.24 0.015 80)',
-                    background: 'oklch(0.99 0.004 85)',
-                    outline: 'none',
-                  }}
+                  className="w-full rounded-xl border border-sand-880 bg-sand-990 px-3 py-[11px] font-mono text-[20px] font-medium tracking-[-0.01em] text-ink-240 outline-none focus:border-teal-accent focus:shadow-[0_0_0_3px_oklch(0.55_0.11_195_/_13%)]"
                 />
               </div>
-              <div style={{ flex: '1 1 190px' }}>
-                <div
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '10.5px',
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    color: 'oklch(0.6 0.01 85)',
-                    marginBottom: '6px',
-                  }}
-                >
+              <div className="flex-[1_1_190px]">
+                <div className="mb-1.5 font-mono text-[10.5px] tracking-[0.12em] text-sand-600 uppercase">
                   Repeat
                 </div>
-                <div style={{ display: 'flex', gap: '5px' }}>
+                <div className="flex gap-[5px]">
                   {DAYS.map(([letter, full], i) => {
                     const active = days.includes(i)
                     return (
@@ -690,17 +414,9 @@ export default function OnwardPage() {
                         key={full}
                         onClick={() => setDays((d) => (active ? d.filter((x) => x !== i) : d.concat([i])))}
                         aria-label={full}
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          height: '38px',
-                          borderRadius: '10px',
-                          fontSize: '12.5px',
-                          fontWeight: 600,
-                          border: '1px solid ' + (active ? 'oklch(0.55 0.11 195)' : 'oklch(0.88 0.012 85)'),
-                          background: active ? 'oklch(0.55 0.11 195)' : 'oklch(0.99 0.004 85)',
-                          color: active ? 'oklch(0.99 0.005 195)' : 'oklch(0.5 0.015 80)',
-                        }}
+                        className={`h-[38px] min-w-0 flex-1 rounded-[10px] border text-[12.5px] font-semibold ${
+                          active ? 'border-teal-accent bg-teal-accent text-teal-on-accent' : 'border-sand-880 bg-sand-990 text-ink-500'
+                        }`}
                       >
                         {letter}
                       </button>
@@ -713,37 +429,28 @@ export default function OnwardPage() {
             <button
               onClick={handleSave}
               disabled={!canSave || commute.isSaving}
-              style={{
-                width: '100%',
-                marginTop: '20px',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '15px',
-                fontSize: '15px',
-                fontWeight: 600,
-                color: 'oklch(0.99 0.005 195)',
-                background: canSave ? 'oklch(0.42 0.09 195)' : 'oklch(0.88 0.012 85)',
-                cursor: canSave ? 'pointer' : 'not-allowed',
-              }}
+              className={`mt-5 w-full rounded-xl border-0 p-[15px] text-[15px] font-semibold text-teal-on-accent ${
+                canSave ? 'cursor-pointer bg-teal-deep' : 'cursor-not-allowed bg-sand-880'
+              }`}
             >
               {commute.isSaving ? 'Saving…' : canSave ? 'Schedule this alert' : 'Add both stops to continue'}
             </button>
-            <div style={{ fontSize: '12.5px', color: 'oklch(0.62 0.01 85)', textAlign: 'center', marginTop: '10px', minHeight: '18px' }}>
+            <div className="mt-2.5 min-h-[18px] text-center text-[12.5px] text-sand-620">
               {canSave ? pushTime + ' · ' + daysLabel(days) : 'Pick a suggestion for both stops to continue.'}
             </div>
           </section>
 
-          <section style={{ flex: '1 1 400px', minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', padding: '0 4px 12px' }}>
-              <h2 style={{ margin: 0, fontSize: '19px', fontWeight: 700, letterSpacing: '-0.02em' }}>Your alerts</h2>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: 'oklch(0.6 0.01 85)' }}>{hasAlerts ? '1 scheduled' : ''}</span>
+          <section className="min-w-0 flex-[1_1_400px]">
+            <div className="flex items-baseline gap-2.5 px-1 pb-3">
+              <h2 className="text-[19px] font-bold tracking-[-0.02em]">Your alerts</h2>
+              <span className="font-mono text-[12px] text-sand-600">{hasAlerts ? '1 scheduled' : ''}</span>
             </div>
 
             {!hasAlerts && (
-              <div style={{ border: '1.5px dashed oklch(0.86 0.012 85)', borderRadius: '20px', padding: '40px 24px', textAlign: 'center', background: 'oklch(0.985 0.005 85)' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '12px', border: '2px dashed oklch(0.82 0.012 85)', margin: '0 auto 14px' }} />
-                <div style={{ fontSize: '15px', fontWeight: 600 }}>No alerts yet</div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: 'oklch(0.62 0.01 85)', marginTop: '6px', lineHeight: 1.6 }}>
+              <div className="rounded-[20px] border-[1.5px] border-dashed border-sand-860 bg-sand-985 px-6 py-10 text-center">
+                <div className="mx-auto mb-3.5 h-10 w-10 rounded-xl border-2 border-dashed border-sand-820" />
+                <div className="text-[15px] font-semibold">No alerts yet</div>
+                <div className="mt-1.5 font-mono text-[12px] leading-[1.6] text-sand-620">
                   add your morning commute
                   <br />
                   on the left to get started
@@ -751,39 +458,31 @@ export default function OnwardPage() {
               </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="flex flex-col gap-3">
               {commute.savedConfig && (
                 <div
-                  style={{
-                    border: '1px solid oklch(0.9 0.012 85)',
-                    borderRadius: '18px',
-                    background: 'oklch(1 0 0)',
-                    padding: '16px 18px',
-                    boxShadow: '0 1px 2px oklch(0.5 0.02 85 / 0.05)',
-                    animation: 'onw-in 260ms ease both',
-                    opacity: on ? 1 : 0.55,
-                  }}
+                  className={`animate-in-260 rounded-[18px] border border-sand-900 bg-sand-1000 px-[18px] py-4 shadow-card ${on ? 'opacity-100' : 'opacity-55'}`}
                 >
-                  <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                    <div style={{ flex: 'none', textAlign: 'left', minWidth: '76px' }}>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '22px', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1 }}>
+                  <div className="flex items-start gap-3.5">
+                    <div className="min-w-[76px] flex-none text-left">
+                      <div className="font-mono text-[22px] leading-none font-bold tracking-[-0.03em]">
                         {commute.savedConfig.pushTime}
                       </div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'oklch(0.62 0.01 85)', marginTop: '5px' }}>
+                      <div className="mt-[5px] font-mono text-[10px] tracking-[0.1em] text-sand-620 uppercase">
                         every day
                       </div>
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', gap: '9px', alignItems: 'center' }}>
-                        <div style={{ width: '9px', height: '9px', borderRadius: '999px', border: '2.5px solid oklch(0.55 0.11 195)', flex: 'none' }} />
-                        <div style={{ fontSize: '14.5px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{commute.savedConfig.origin.name}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-[9px]">
+                        <div className="h-[9px] w-[9px] flex-none rounded-full border-[2.5px] border-teal-accent" />
+                        <div className="min-w-0 flex-1 overflow-hidden text-[14.5px] font-medium text-ellipsis whitespace-nowrap">{commute.savedConfig.origin.name}</div>
                       </div>
-                      <div style={{ width: 0, height: '10px', borderLeft: '2px dashed oklch(0.88 0.012 85)', margin: '2px 0 2px 5.5px' }} />
-                      <div style={{ display: 'flex', gap: '9px', alignItems: 'center' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'oklch(0.6 0.13 60)', flex: 'none', margin: '0 0.5px' }} />
-                        <div style={{ fontSize: '14.5px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{commute.savedConfig.destination.name}</div>
+                      <div className="my-0.5 ml-[5.5px] h-[10px] w-0 border-l-2 border-dashed border-sand-880" />
+                      <div className="flex items-center gap-[9px]">
+                        <div className="mx-[0.5px] h-2 w-2 flex-none rounded-[2px] bg-amber-accent" />
+                        <div className="min-w-0 flex-1 overflow-hidden text-[14.5px] font-medium text-ellipsis whitespace-nowrap">{commute.savedConfig.destination.name}</div>
                       </div>
-                      <div style={{ fontSize: '12.5px', color: 'oklch(0.6 0.01 85)', marginTop: '9px' }}>
+                      <div className="mt-[9px] text-[12.5px] text-sand-600">
                         {on ? relativeLabel(nextOccurrence(commute.savedConfig.pushTime)) : 'paused — no pushes'}
                       </div>
                     </div>
@@ -791,29 +490,18 @@ export default function OnwardPage() {
                       <button
                         onClick={() => setPending(true)}
                         aria-label="Delete alert"
-                        className={styles.deleteButton}
-                        style={{
-                          flex: 'none',
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '9px',
-                          border: '1px solid oklch(0.92 0.012 85)',
-                          background: 'oklch(0.99 0.004 85)',
-                          color: 'oklch(0.55 0.015 80)',
-                          fontSize: '15px',
-                          lineHeight: 1,
-                        }}
+                        className="h-8 w-8 flex-none rounded-[9px] border border-sand-920 bg-sand-990 text-[15px] leading-none text-ink-550 hover:border-red-hover-border hover:bg-red-hover-bg hover:text-red-hover-text"
                       >
                         ×
                       </button>
                     )}
                   </div>
                   {pending && (
-                    <div style={{ marginTop: '14px', paddingTop: '13px', borderTop: '1px solid oklch(0.94 0.01 85)', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                      <span style={{ flex: '1 1 140px', fontSize: '13.5px', color: 'oklch(0.45 0.015 80)' }}>Delete this alert?</span>
+                    <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-sand-940 pt-[13px]">
+                      <span className="flex-[1_1_140px] text-[13.5px] text-ink-450">Delete this alert?</span>
                       <button
                         onClick={() => setPending(false)}
-                        style={{ border: '1px solid oklch(0.88 0.012 85)', background: 'oklch(1 0 0)', borderRadius: '9px', padding: '8px 14px', fontSize: '13.5px', fontWeight: 500, color: 'oklch(0.4 0.015 80)' }}
+                        className="rounded-[9px] border border-sand-880 bg-sand-1000 px-3.5 py-2 text-[13.5px] font-medium text-ink-400"
                       >
                         Keep
                       </button>
@@ -823,7 +511,7 @@ export default function OnwardPage() {
                           // the backend is upsert-only today, so there is nothing to delete yet.
                           setPending(false)
                         }}
-                        style={{ border: 'none', background: 'oklch(0.5 0.15 25)', color: 'oklch(0.99 0.01 25)', borderRadius: '9px', padding: '8px 14px', fontSize: '13.5px', fontWeight: 600 }}
+                        className="rounded-[9px] border-0 bg-red-accent px-3.5 py-2 text-[13.5px] font-semibold text-red-on-accent"
                       >
                         Delete
                       </button>
@@ -834,7 +522,7 @@ export default function OnwardPage() {
             </div>
 
             {hasAlerts && (
-              <div style={{ marginTop: '14px', padding: '12px 16px', borderRadius: '14px', background: 'oklch(0.95 0.012 195 / 0.6)', border: '1px solid oklch(0.88 0.02 195)', fontSize: '13px', color: 'oklch(0.4 0.05 195)', lineHeight: 1.5 }}>
+              <div className="mt-3.5 rounded-[14px] border border-teal-tint-border bg-teal-tint/60 px-4 py-3 text-[13px] leading-[1.5] text-teal-tint-text">
                 {on ? 'Onward keeps working when the tab is closed — install it to your home screen for the most reliable delivery.' : 'Turn notifications back on above to resume these pushes.'}
               </div>
             )}
@@ -843,25 +531,7 @@ export default function OnwardPage() {
       </main>
 
       {toast && (
-        <div
-          style={{
-            position: 'fixed',
-            zIndex: 80,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            bottom: '22px',
-            background: 'oklch(0.26 0.015 80)',
-            color: 'oklch(0.98 0.005 85)',
-            padding: '12px 18px',
-            borderRadius: '999px',
-            fontSize: '14px',
-            fontWeight: 500,
-            boxShadow: '0 8px 24px oklch(0.3 0.02 85 / 0.3)',
-            animation: 'onw-in 200ms ease both',
-            maxWidth: 'calc(100vw - 32px)',
-            textAlign: 'center',
-          }}
-        >
+        <div className="fixed bottom-[22px] left-1/2 z-[80] max-w-[calc(100vw-32px)] -translate-x-1/2 animate-in-200 rounded-full bg-ink-260 px-[18px] py-3 text-center text-[14px] font-medium text-sand-980 shadow-toast">
           {toast}
         </div>
       )}
