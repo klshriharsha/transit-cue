@@ -51,21 +51,39 @@ async function saveCommuteConfig(payload: SaveInput): Promise<CommuteConfig> {
 
 export function useCommuteConfig(subscription: PushSubscription | null) {
   const [savedConfig, setSavedConfig] = useState<CommuteConfig | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  // Starts true: the first load hasn't run yet, and the UI should treat that as
+  // "loading" rather than "no alerts" so nothing flashes before the fetch settles.
+  const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [trackedEndpoint, setTrackedEndpoint] = useState<string | null | undefined>(undefined)
+
+  // Flip back to loading in the same render that delivers a new subscription, so
+  // there's no intermediate frame showing stale (or empty) data as settled.
+  const endpoint = subscription?.endpoint ?? null
+  if (endpoint !== trackedEndpoint) {
+    setTrackedEndpoint(endpoint)
+    setIsLoading(true)
+  }
 
   useEffect(() => {
+    let cancelled = false
     const task = subscription ? fetchCommuteConfig(subscription.endpoint) : Promise.resolve(null)
 
-    Promise.resolve().then(() => setIsLoading(true))
-
     task
-      .then(setSavedConfig)
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Could not load saved preferences.')
+      .then((config) => {
+        if (!cancelled) setSavedConfig(config)
       })
-      .finally(() => setIsLoading(false))
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load saved preferences.')
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [subscription])
 
   const save = async (

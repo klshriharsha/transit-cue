@@ -31,22 +31,44 @@ export function usePushSubscription() {
   const [subscription, setSubscription] = useState<PushSubscription | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // True until the first client-side check of permission + existing subscription
+  // settles, so the UI can show a loading state instead of flashing the
+  // "not enabled" layout and then snapping to the real one.
+  const [initializing, setInitializing] = useState(true)
 
   useEffect(() => {
-    if (!isPushSupported()) return
+    let cancelled = false
 
-    Promise.resolve().then(() => setPermission(Notification.permission))
+    if (!isPushSupported()) {
+      Promise.resolve().then(() => {
+        if (!cancelled) setInitializing(false)
+      })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    Promise.resolve().then(() => {
+      if (!cancelled) setPermission(Notification.permission)
+    })
 
     navigator.serviceWorker
       .register('/sw.js')
       .then(() => navigator.serviceWorker.ready)
       .then((registration) => registration.pushManager.getSubscription())
       .then((existing) => {
-        if (existing) setSubscription(existing)
+        if (!cancelled && existing) setSubscription(existing)
       })
       .catch(() => {
         // No existing subscription to restore; the user can still opt in manually.
       })
+      .finally(() => {
+        if (!cancelled) setInitializing(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const subscribe = async () => {
@@ -95,15 +117,21 @@ export function usePushSubscription() {
   const unsubscribe = async () => {
     if (!subscription) return
 
+    setBusy(true)
+    setError(null)
+
     try {
       await subscription.unsubscribe()
       setSubscription(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not disable notifications.')
+    } finally {
+      setBusy(false)
     }
   }
 
   return {
+    initializing,
     granted: permission === 'granted',
     permissionDenied: permission === 'denied',
     subscription,

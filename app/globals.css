@@ -75,6 +75,8 @@
   --animate-in-200: onw-in 200ms ease both;
   --animate-in-260: onw-in 260ms ease both;
   --animate-in-400: onw-in 400ms ease both;
+  --animate-spin-fast: onw-spin 0.7s linear infinite;
+  --animate-pulse-soft: onw-pulse 1.1s ease-in-out infinite;
 }
 
 html,

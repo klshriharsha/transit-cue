@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { usePushSubscription } from '@/hooks/usePushSubscription'
 import { useCommuteConfig, type Station } from '@/hooks/useCommuteConfig'
 
@@ -40,13 +40,13 @@ function nextOccurrence(pushTime: string): Date | null {
   return candidate
 }
 
-function relativeLabel(d: Date | null): string {
+function relativeLabel(d: Date | null, formatClock: (value: Date) => string): string {
   if (!d) return 'not scheduled'
   const mins = Math.round((d.getTime() - Date.now()) / 60000)
   if (mins < 60) return 'next push in ' + mins + ' min'
   const h = Math.floor(mins / 60)
   if (h < 24) return 'next push in ' + h + 'h ' + (mins % 60) + 'm'
-  return 'next push tomorrow, ' + d.toTimeString().slice(0, 5)
+  return 'next push tomorrow, ' + formatClock(d)
 }
 
 async function searchStations(query: string): Promise<Station[]> {
@@ -201,6 +201,35 @@ export default function TransitCuePage() {
   const push = usePushSubscription()
   const commute = useCommuteConfig(push.subscription)
 
+  // Times are stored canonically as 24h "HH:MM"; every visible time is rendered
+  // through formatClock so the native picker and "Your alerts" agree on one format —
+  // the viewer's locale. Rendering stays canonical until mount to avoid an
+  // SSR/client hydration mismatch when the server locale differs from the browser's.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  )
+
+  const formatClock = (value: string | Date): string => {
+    let date: Date
+    if (typeof value === 'string') {
+      const [h, m] = value.split(':').map(Number)
+      date = new Date()
+      date.setHours(h, m, 0, 0)
+    } else {
+      date = value
+    }
+    if (!mounted) return typeof value === 'string' ? value : value.toTimeString().slice(0, 5)
+    return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(date)
+  }
+
+  // Format hint for the time field's label, matching the viewer's locale.
+  const clockHint =
+    mounted && new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).resolvedOptions().hour12
+      ? 'H:MM AM/PM'
+      : 'HH:MM'
+
   const [fromStation, setFromStation] = useState<Station | null>(null)
   const [toStation, setToStation] = useState<Station | null>(null)
   const [pushTime, setPushTime] = useState('08:15')
@@ -218,10 +247,12 @@ export default function TransitCuePage() {
     toastTimer.current = setTimeout(() => setToast(''), 2600)
   }
 
+  const bootstrapping = push.initializing
   const on = push.isSubscribed
   const needsPermission = !push.granted
   const isGranted = push.granted
   const hasAlerts = commute.savedConfig !== null
+  const alertsLoading = bootstrapping || commute.isLoading
   const canSave = Boolean(fromStation && toStation && days.length)
 
   const handleSave = async () => {
@@ -230,7 +261,7 @@ export default function TransitCuePage() {
     if (result.config) {
       setFromStation(null)
       setToStation(null)
-      flash('Alert saved · ' + pushTime)
+      flash('Alert saved · ' + formatClock(pushTime))
     } else {
       flash(result.error)
     }
@@ -241,9 +272,23 @@ export default function TransitCuePage() {
       <header className="sticky top-0 z-[60] border-b border-sand-900 bg-sand-972/88 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1080px] items-center gap-[14px] px-[clamp(16px,4vw,28px)]">
           <div className="flex items-center gap-2.5">
-            <div className="grid h-[26px] w-[26px] place-items-center rounded-lg bg-teal-accent">
-              <div className="h-2 w-2 rounded-full bg-teal-on-accent-alt" />
-            </div>
+            <svg
+              className="h-[26px] w-[26px]"
+              viewBox="0 0 512 512"
+              role="img"
+              aria-label="TransitCue"
+            >
+              <rect width="512" height="512" rx="116" fill="#0f766e" />
+              <g fill="#ffffff">
+                <rect x="112" y="96" width="288" height="312" rx="58" />
+                <rect x="142" y="392" width="54" height="40" rx="14" />
+                <rect x="316" y="392" width="54" height="40" rx="14" />
+              </g>
+              <rect x="150" y="130" width="212" height="46" rx="15" fill="#e6902f" />
+              <rect x="150" y="194" width="212" height="108" rx="26" fill="#0f766e" />
+              <circle cx="178" cy="342" r="17" fill="#0f766e" />
+              <circle cx="334" cy="342" r="17" fill="#0f766e" />
+            </svg>
             <span className="text-[18px] font-bold tracking-[-0.02em]">TransitCue</span>
           </div>
           <span className="pt-0.5 font-mono text-[11px] tracking-[0.1em] text-sand-600 uppercase">
@@ -251,16 +296,37 @@ export default function TransitCuePage() {
           </span>
           <div className="flex-1" />
           <div className="flex items-center gap-2 rounded-full border border-sand-900 bg-sand-1000 py-1.5 pr-3 pl-2.5">
-            <div
-              className={`h-[7px] w-[7px] rounded-full ${on ? 'bg-green-accent' : isGranted ? 'bg-amber-muted' : 'bg-sand-780'}`}
-            />
-            <span className="text-[13px] font-medium text-ink-420">{on ? 'Notifications on' : isGranted ? 'Paused' : 'Not enabled'}</span>
+            {bootstrapping ? (
+              <>
+                <div className="h-[7px] w-[7px] animate-pulse-soft rounded-full bg-sand-780" />
+                <span className="h-[13px] w-[86px] animate-pulse-soft rounded bg-sand-920" />
+              </>
+            ) : (
+              <>
+                <div
+                  className={`h-[7px] w-[7px] rounded-full ${on ? 'bg-green-accent' : isGranted ? 'bg-amber-muted' : 'bg-sand-780'}`}
+                />
+                <span className="text-[13px] font-medium text-ink-420">
+                  {on ? 'Notifications on' : isGranted ? 'Paused' : 'Not enabled'}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-[1080px] px-[clamp(16px,4vw,28px)] pt-[clamp(20px,4vw,36px)]">
-        {needsPermission && (
+        {bootstrapping && (
+          <section className="mb-5 rounded-2xl border border-sand-900 bg-sand-1000 p-[16px_18px] shadow-card">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-md bg-amber-tint px-2.5 py-[5px] font-mono text-[11px] tracking-[0.12em] text-amber-text uppercase">
+              step 1 of 2
+            </div>
+            <div className="h-[17px] w-[168px] max-w-full animate-pulse-soft rounded bg-sand-920" />
+            <div className="mt-2.5 h-[13px] w-[264px] max-w-full animate-pulse-soft rounded bg-sand-930" />
+          </section>
+        )}
+
+        {!bootstrapping && needsPermission && (
           <section className="mb-5 flex flex-wrap items-center gap-[clamp(18px,3vw,32px)] rounded-[20px] border border-sand-900 bg-sand-1000 p-[clamp(20px,4vw,32px)] shadow-card">
             <div className="min-w-0 flex-[1_1_300px]">
               <div className="inline-flex items-center gap-2 rounded-md bg-amber-tint px-2.5 py-[5px] font-mono text-[11px] tracking-[0.12em] text-amber-text uppercase">
@@ -304,9 +370,12 @@ export default function TransitCuePage() {
           </section>
         )}
 
-        {isGranted && (
+        {!bootstrapping && isGranted && (
           <section className="mb-5 flex flex-wrap items-center gap-3.5 rounded-2xl border border-sand-900 bg-sand-1000 p-[16px_18px] shadow-card">
             <div className="min-w-0 flex-[1_1_240px]">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-md bg-amber-tint px-2.5 py-[5px] font-mono text-[11px] tracking-[0.12em] text-amber-text uppercase">
+                step 1 of 2
+              </div>
               <div className="text-[15px] font-semibold">Push notifications</div>
               <div className="mt-[3px] text-[13.5px] text-ink-520">
                 {on
@@ -318,18 +387,28 @@ export default function TransitCuePage() {
             </div>
             <button
               onClick={() => (on ? push.unsubscribe() : push.subscribe())}
+              disabled={push.busy}
+              aria-busy={push.busy}
               aria-label="Toggle all notifications"
-              className="flex items-center gap-2.5 border-0 bg-transparent p-0"
+              className="flex items-center gap-2.5 border-0 bg-transparent p-0 disabled:cursor-wait"
             >
               <span className="font-mono text-[11px] tracking-[0.1em] text-ink-550 uppercase">
-                {on ? 'On' : 'Off'}
+                {push.busy ? (on ? 'Turning off…' : 'Turning on…') : on ? 'On' : 'Off'}
               </span>
               <span
-                className={`block h-7 w-12 rounded-full p-[3px] [transition:background_160ms_ease] ${on ? 'bg-teal-accent' : 'bg-sand-860'}`}
+                className={`block h-7 w-12 rounded-full p-[3px] [transition:background_160ms_ease] ${
+                  push.busy ? 'bg-sand-780' : on ? 'bg-teal-accent' : 'bg-sand-860'
+                }`}
               >
                 <span
-                  className={`block h-[22px] w-[22px] rounded-full bg-sand-1000 shadow-knob [transition:transform_160ms_ease] ${on ? 'translate-x-5' : 'translate-x-0'}`}
-                />
+                  className={`grid h-[22px] w-[22px] place-items-center rounded-full bg-sand-1000 shadow-knob [transition:transform_160ms_ease] ${
+                    on ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                >
+                  {push.busy && (
+                    <span className="block h-3 w-3 animate-spin-fast rounded-full border-2 border-sand-780 border-t-transparent" />
+                  )}
+                </span>
               </span>
             </button>
           </section>
@@ -392,11 +471,14 @@ export default function TransitCuePage() {
             <div className="flex flex-wrap items-end gap-[18px]">
               <div className="flex-[0_1_150px]">
                 <label htmlFor="onw-time" className="mb-1.5 block font-mono text-[10.5px] tracking-[0.12em] text-sand-600 uppercase">
-                  Push at (HH:MM)
+                  Push at ({clockHint})
                 </label>
                 <input
                   id="onw-time"
                   type="time"
+                  // The native picker renders in the browser's locale; every other
+                  // visible time goes through formatClock() with that same locale so
+                  // the two stay consistent. Stored value is always 24h "HH:MM".
                   value={pushTime}
                   onChange={(e) => setPushTime(e.target.value || '08:15')}
                   className="w-full rounded-xl border border-sand-880 bg-sand-990 px-3 py-[11px] font-mono text-[20px] font-medium tracking-[-0.01em] text-ink-240 outline-none focus:border-teal-accent focus:shadow-[0_0_0_3px_oklch(0.55_0.11_195_/_13%)]"
@@ -436,17 +518,34 @@ export default function TransitCuePage() {
               {commute.isSaving ? 'Saving…' : canSave ? 'Schedule this alert' : 'Add both stops to continue'}
             </button>
             <div className="mt-2.5 min-h-[18px] text-center text-[12.5px] text-sand-620">
-              {canSave ? pushTime + ' · ' + daysLabel(days) : 'Pick a suggestion for both stops to continue.'}
+              {canSave ? formatClock(pushTime) + ' · ' + daysLabel(days) : 'Pick a suggestion for both stops to continue.'}
             </div>
           </section>
 
           <section className="min-w-0 flex-[1_1_400px]">
             <div className="flex items-baseline gap-2.5 px-1 pb-3">
               <h2 className="text-[19px] font-bold tracking-[-0.02em]">Your alerts</h2>
-              <span className="font-mono text-[12px] text-sand-600">{hasAlerts ? '1 scheduled' : ''}</span>
+              <span className="font-mono text-[12px] text-sand-600">{!alertsLoading && hasAlerts ? '1 scheduled' : ''}</span>
             </div>
 
-            {!hasAlerts && (
+            {alertsLoading && (
+              <div className="rounded-[18px] border border-sand-900 bg-sand-1000 px-[18px] py-4 shadow-card">
+                <div className="flex items-start gap-3.5">
+                  <div className="min-w-[76px] flex-none">
+                    <div className="h-[22px] w-[62px] animate-pulse-soft rounded bg-sand-920" />
+                    <div className="mt-[7px] h-[10px] w-[46px] animate-pulse-soft rounded bg-sand-930" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="h-[14px] w-[68%] animate-pulse-soft rounded bg-sand-920" />
+                    <div className="my-2 ml-[5.5px] h-[10px] w-0 border-l-2 border-dashed border-sand-880" />
+                    <div className="h-[14px] w-[54%] animate-pulse-soft rounded bg-sand-920" />
+                    <div className="mt-[11px] h-[12px] w-[40%] animate-pulse-soft rounded bg-sand-930" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!alertsLoading && !hasAlerts && (
               <div className="rounded-[20px] border-[1.5px] border-dashed border-sand-860 bg-sand-985 px-6 py-10 text-center">
                 <div className="mx-auto mb-3.5 h-10 w-10 rounded-xl border-2 border-dashed border-sand-820" />
                 <div className="text-[15px] font-semibold">No alerts yet</div>
@@ -459,14 +558,14 @@ export default function TransitCuePage() {
             )}
 
             <div className="flex flex-col gap-3">
-              {commute.savedConfig && (
+              {!alertsLoading && commute.savedConfig && (
                 <div
                   className={`animate-in-260 rounded-[18px] border border-sand-900 bg-sand-1000 px-[18px] py-4 shadow-card ${on ? 'opacity-100' : 'opacity-55'}`}
                 >
                   <div className="flex items-start gap-3.5">
                     <div className="min-w-[76px] flex-none text-left">
                       <div className="font-mono text-[22px] leading-none font-bold tracking-[-0.03em]">
-                        {commute.savedConfig.pushTime}
+                        {formatClock(commute.savedConfig.pushTime)}
                       </div>
                       <div className="mt-[5px] font-mono text-[10px] tracking-[0.1em] text-sand-620 uppercase">
                         every day
@@ -483,7 +582,7 @@ export default function TransitCuePage() {
                         <div className="min-w-0 flex-1 overflow-hidden text-[14.5px] font-medium text-ellipsis whitespace-nowrap">{commute.savedConfig.destination.name}</div>
                       </div>
                       <div className="mt-[9px] text-[12.5px] text-sand-600">
-                        {on ? relativeLabel(nextOccurrence(commute.savedConfig.pushTime)) : 'paused — no pushes'}
+                        {on ? relativeLabel(nextOccurrence(commute.savedConfig.pushTime), formatClock) : 'paused — no pushes'}
                       </div>
                     </div>
                     {!pending && (
@@ -521,7 +620,7 @@ export default function TransitCuePage() {
               )}
             </div>
 
-            {hasAlerts && (
+            {!alertsLoading && hasAlerts && (
               <div className="mt-3.5 rounded-[14px] border border-teal-tint-border bg-teal-tint/60 px-4 py-3 text-[13px] leading-[1.5] text-teal-tint-text">
                 {on ? 'TransitCue keeps working when the tab is closed — install it to your home screen for the most reliable delivery.' : 'Turn notifications back on above to resume these pushes.'}
               </div>
