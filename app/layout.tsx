@@ -16,12 +16,12 @@ const jetBrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Onward',
+  title: 'TransitCue',
   description: 'Scheduled transit commute reminders',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Onward',
+    title: 'TransitCue',
   },
 }
 

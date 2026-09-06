@@ -1,6 +1,6 @@
 self.addEventListener('push', (event) => {
   const payload = event.data?.json()
-  const title = payload?.title ?? 'Onward'
+  const title = payload?.title ?? 'TransitCue'
 
   event.waitUntil(
     self.registration.showNotification(title, {

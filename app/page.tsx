@@ -197,7 +197,7 @@ function StopField({ id, label, placeholder, variant, value, onChange }: StopFie
   )
 }
 
-export default function OnwardPage() {
+export default function TransitCuePage() {
   const push = usePushSubscription()
   const commute = useCommuteConfig(push.subscription)
 
@@ -244,7 +244,7 @@ export default function OnwardPage() {
             <div className="grid h-[26px] w-[26px] place-items-center rounded-lg bg-teal-accent">
               <div className="h-2 w-2 rounded-full bg-teal-on-accent-alt" />
             </div>
-            <span className="text-[18px] font-bold tracking-[-0.02em]">Onward</span>
+            <span className="text-[18px] font-bold tracking-[-0.02em]">TransitCue</span>
           </div>
           <span className="pt-0.5 font-mono text-[11px] tracking-[0.1em] text-sand-600 uppercase">
             transit nudges
@@ -270,7 +270,7 @@ export default function OnwardPage() {
                 Never sprint for the bus again.
               </h1>
               <p className="max-w-[46ch] text-[16px] leading-[1.55] text-ink-480 text-pretty">
-                Onward pushes a notification at the exact minute you need to leave. Allow notifications once — everything after that lives on this device.
+                TransitCue pushes a notification at the exact minute you need to leave. Allow notifications once — everything after that lives on this device.
               </p>
               <div className="mt-[22px] flex flex-wrap items-center gap-2.5">
                 <button
@@ -291,7 +291,7 @@ export default function OnwardPage() {
                   ON
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[13px] font-semibold">Onward · now</div>
+                  <div className="text-[13px] font-semibold">TransitCue · now</div>
                   <div className="mt-0.5 text-[13px] leading-[1.45] text-ink-450">
                     Leave in 6 min for the 8:15 — Congress Ave → 4th &amp; Guadalupe.
                   </div>
@@ -523,7 +523,7 @@ export default function OnwardPage() {
 
             {hasAlerts && (
               <div className="mt-3.5 rounded-[14px] border border-teal-tint-border bg-teal-tint/60 px-4 py-3 text-[13px] leading-[1.5] text-teal-tint-text">
-                {on ? 'Onward keeps working when the tab is closed — install it to your home screen for the most reliable delivery.' : 'Turn notifications back on above to resume these pushes.'}
+                {on ? 'TransitCue keeps working when the tab is closed — install it to your home screen for the most reliable delivery.' : 'Turn notifications back on above to resume these pushes.'}
               </div>
             )}
           </section>

@@ -4,8 +4,8 @@ import type { MetadataRoute } from 'next'
 // manifest (plus the apple-touch-icon link in the layout) needs to be real, not decorative.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Onward',
-    short_name: 'Onward',
+    name: 'TransitCue',
+    short_name: 'TransitCue',
     description: 'Scheduled transit commute reminders',
     start_url: '/',
     display: 'standalone',
