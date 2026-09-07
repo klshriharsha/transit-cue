@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { getClientId } from '@/lib/client-id'
 
 export type Station = {
   id: string
@@ -14,6 +15,7 @@ export type CommuteConfig = {
 }
 
 type SaveInput = {
+  clientId: string
   endpoint: string
   keys: { auth: string; p256dh: string }
   origin: Station
@@ -110,6 +112,7 @@ export function useCommuteConfig(subscription: PushSubscription | null) {
 
     try {
       const config = await saveCommuteConfig({
+        clientId: getClientId(),
         endpoint: subscription.endpoint,
         keys: { auth: keys.auth, p256dh: keys.p256dh },
         origin,

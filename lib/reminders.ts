@@ -2,6 +2,7 @@ import { config } from '@/lib/config'
 import { logger } from '@/lib/logger'
 import { getNextDepartures, type UpcomingDeparture } from '@/integrations/hafas/departures'
 import { commuteConfigStore, type CommuteConfigWithSubscription } from '@/integrations/supabase/commuteConfigStore'
+import { subscriptionStore } from '@/integrations/supabase/subscriptionStore'
 import { webpush } from '@/integrations/webpush'
 
 function currentTime(): string {
@@ -59,6 +60,23 @@ async function sendReminderForConfig(commuteConfig: CommuteConfigWithSubscriptio
     await webpush.sendNotification(commuteConfig.subscription, payload)
     return true
   } catch (error) {
+    // 404 Not Found / 410 Gone: the push service has permanently dropped this endpoint (the
+    // user cleared browser data, uninstalled the PWA, or it simply expired). Delete the
+    // subscription row so it stops being retried every minute; the FK cascade takes the
+    // orphaned commute config with it.
+    const statusCode = (error as { statusCode?: number }).statusCode
+
+    if (statusCode === 404 || statusCode === 410) {
+      logger.info(
+        { commuteConfigId: commuteConfig.id, subscriptionId: commuteConfig.subscription.id },
+        'Pruning expired push subscription',
+      )
+      await subscriptionStore.delete(commuteConfig.subscription.id).catch((deleteError: unknown) => {
+        logger.warn({ err: deleteError, commuteConfigId: commuteConfig.id }, 'Failed to prune expired push subscription')
+      })
+      return false
+    }
+
     logger.warn({ err: error, commuteConfigId: commuteConfig.id }, 'Failed to send transit reminder push')
     return false
   }

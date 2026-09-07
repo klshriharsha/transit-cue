@@ -10,6 +10,7 @@ const stationSchema = z.object({
 })
 
 const configSchema = z.object({
+  clientId: z.string().min(1),
   endpoint: z.string().url(),
   keys: z.object({
     auth: z.string().min(1),
@@ -43,8 +44,8 @@ async function handlePost(request: NextRequest) {
     return NextResponse.json({ error: 'A valid commute configuration is required.' }, { status: 400 })
   }
 
-  const { endpoint, keys, origin, destination, pushTime } = result.data
-  const subscription = await subscriptionStore.upsert({ endpoint, keys })
+  const { clientId, endpoint, keys, origin, destination, pushTime } = result.data
+  const subscription = await subscriptionStore.upsert(clientId, { endpoint, keys })
   const commuteConfig = await commuteConfigStore.upsertForSubscription(subscription.id, {
     originId: origin.id,
     originName: origin.name,

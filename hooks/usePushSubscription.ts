@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { getClientId } from '@/lib/client-id'
 
 function urlBase64ToUint8Array(value: string) {
   const paddedValue = value.padEnd(value.length + ((4 - (value.length % 4)) % 4), '=')
@@ -18,7 +19,7 @@ async function subscribePush(subscription: PushSubscription): Promise<void> {
   const response = await fetch('/api/subscribe', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(subscription),
+    body: JSON.stringify({ clientId: getClientId(), subscription }),
   })
 
   if (!response.ok) {

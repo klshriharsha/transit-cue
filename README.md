@@ -2,13 +2,17 @@
 
 Transit Cue is a small progressive web app that tells you the exact minute to leave for your commute. You pick a departure stop, a destination stop, and a time of day; from then on the app sends a web-push notification at that time with live departure info for your line — "M10 from Eberswalder Straße to Nordbahnhof departs in 6 mins (on time). Next one in 16 mins." — so you never sprint for a bus that already left.
 
-Departure data comes from the VBB (Berlin/Brandenburg) transit network via the HAFAS API. There are no user accounts: a device is identified only by its browser push subscription, so "your data" is one row keyed to that subscription. iOS only delivers push to home-screen installs, hence the PWA manifest and service worker.
+Departure data comes from the VBB (Berlin/Brandenburg) transit network via the HAFAS API. There are no user accounts: a browser is identified by a random `client_id` it generates once and keeps in `localStorage`, and "your data" is the one subscription row (plus its commute config) keyed to that id. The id is decoupled from the push endpoint on purpose — the endpoint rotates every time notifications are toggled off and back on, so keying on it would strand the saved commute. iOS only delivers push to home-screen installs, hence the PWA manifest and service worker.
 
 ### How it works
 
 - The browser subscribes to push (`hooks/usePushSubscription.ts`) and the subscription is
-stored via `POST /api/subscribe`.
-- Saving a commute (`POST /api/config`) upserts the origin/destination stops and push time.
+stored via `POST /api/subscribe`, keyed by the browser's `client_id` (`lib/client-id.ts`) so
+that toggling notifications off/on updates the same row instead of creating an orphan.
+- Saving a commute (`POST /api/config`) upserts the origin/destination stops and push time
+against that same subscription row.
+- When a push send gets `404`/`410` from the push service, the cron handler deletes the dead
+subscription row (the commute config cascades with it).
 - An external cron service (e.g. cron-job.org) calls `GET/POST /api/cron` once a minute with
 a shared bearer secret. The handler finds every commute whose push time matches the current
 minute (in `TIMEZONE`), looks up the next departures from HAFAS, and sends the push.
