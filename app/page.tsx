@@ -30,6 +30,11 @@ function daysLabel(days: number[]): string {
     .toLowerCase()
 }
 
+function currentClock(): string {
+  const now = new Date()
+  return String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0')
+}
+
 function nextOccurrence(pushTime: string): Date | null {
   const [h, m] = pushTime.split(':').map(Number)
   if (Number.isNaN(h) || Number.isNaN(m)) return null
@@ -232,7 +237,12 @@ export default function TransitCuePage() {
 
   const [fromStation, setFromStation] = useState<Station | null>(null)
   const [toStation, setToStation] = useState<Station | null>(null)
+  // Start from a stable value for SSR, then snap to the viewer's current time once
+  // the page loads so the picker always opens on "now".
   const [pushTime, setPushTime] = useState('08:15')
+  useEffect(() => {
+    setPushTime(currentClock())
+  }, [])
   const [days, setDays] = useState<number[]>(DEFAULT_DAYS)
   const [pending, setPending] = useState(false)
   const [toast, setToast] = useState('')
@@ -480,7 +490,7 @@ export default function TransitCuePage() {
                   // visible time goes through formatClock() with that same locale so
                   // the two stay consistent. Stored value is always 24h "HH:MM".
                   value={pushTime}
-                  onChange={(e) => setPushTime(e.target.value || '08:15')}
+                  onChange={(e) => setPushTime(e.target.value || currentClock())}
                   className="w-full rounded-xl border border-sand-880 bg-sand-990 px-3 py-[11px] font-mono text-[20px] font-medium tracking-[-0.01em] text-ink-240 outline-none focus:border-teal-accent focus:shadow-[0_0_0_3px_oklch(0.55_0.11_195_/_13%)]"
                 />
               </div>
