@@ -77,15 +77,25 @@ browser bundle so the page can call `PushManager.subscribe()`).
 ### 4. Start the database
 
 ```bash
-pnpm exec supabase login      # one-time; stores an access token
-pnpm exec supabase start      # boots local Postgres + Studio in Docker
-pnpm exec supabase db reset   # applies every migration + seed.sql
+pnpm exec supabase login       # one-time; stores an access token
+pnpm exec supabase start       # boots local Postgres + Studio in Docker (needs Docker running)
+pnpm exec supabase db reset    # applies every migration + seed.sql
 ```
 
-`pnpm exec supabase start` prints a local API URL and a `service_role` key — put those into `.env.local`
-as `SUPABASE_URL` (`http://127.0.0.1:54321`) and `SUPABASE_SERVICE_ROLE_KEY`. Studio runs at
-[http://127.0.0.1:54323](http://127.0.0.1:54323). The full migration workflow (creating migrations, hosted dev
-projects, CI deploys) is in [`supabase/README.md`](supabase/README.md).
+This stack runs with Supabase Auth disabled (see [`supabase/config.toml`](supabase/config.toml)),
+so `supabase status` does **not** print an API key. Because no custom `jwt_secret` is set, the
+local stack uses the Supabase CLI's built-in default keys — the same fixed value on every
+machine. Put these in `.env.local`:
+
+```
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
+```
+
+That is a well-known local-only dev credential, not a secret. Studio (table browser, SQL
+editor) runs at [http://127.0.0.1:54323](http://127.0.0.1:54323). The full migration workflow
+(creating migrations, hosted dev projects, CI deploys) is in
+[`supabase/README.md`](supabase/README.md).
 
 ### 5. Run the dev server
 
