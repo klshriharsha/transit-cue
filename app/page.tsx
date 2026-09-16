@@ -367,9 +367,9 @@ export default function TransitCuePage() {
                   ON
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[13px] font-semibold">TransitCue · now</div>
-                  <div className="mt-0.5 text-[13px] leading-[1.45] text-ink-450">
-                    Leave in 6 min for the 8:15 — Congress Ave → 4th &amp; Guadalupe.
+                  <div className="text-[13px] font-semibold">Congress Ave → 4th &amp; Guadalupe</div>
+                  <div className="mt-0.5 whitespace-pre-line text-[13px] leading-[1.45] text-ink-450">
+                    {'20 · 8:15 · on time\n20 · 8:32 · on time\n3 · 8:41 · +4 min'}
                   </div>
                 </div>
               </div>

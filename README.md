@@ -1,6 +1,6 @@
 # Transit Cue
 
-Transit Cue is a small progressive web app that tells you the exact minute to leave for your commute. You pick a departure stop, a destination stop, and a time of day; from then on the app sends a web-push notification at that time with live departure info for your line — "M10 from Eberswalder Straße to Nordbahnhof departs in 6 mins (on time). Next one in 16 mins." — so you never sprint for a bus that already left.
+Transit Cue is a small progressive web app that tells you the exact minute to leave for your commute. You pick a departure stop, a destination stop, and a time of day; from then on the app sends a web-push notification at that time with the next three departures for your line — titled "Eberswalder Straße → Nordbahnhof", with a body of "M10 · 08:15 · on time\nM10 · 08:32 · on time\nM10 · 08:47 · +3 min" — so you never sprint for a bus that already left, and still know your options if you miss the next one.
 
 Departure data comes from the VBB (Berlin/Brandenburg) transit network via the HAFAS API. There are no user accounts: a browser is identified by a random `client_id` it generates once and keeps in `localStorage`, and "your data" is the one subscription row (plus its commute config) keyed to that id. The id is decoupled from the push endpoint on purpose — the endpoint rotates every time notifications are toggled off and back on, so keying on it would strand the saved commute. iOS only delivers push to home-screen installs, hence the PWA manifest and service worker.
 

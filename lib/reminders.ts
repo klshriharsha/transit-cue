@@ -5,41 +5,31 @@ import { commuteConfigStore, type CommuteConfigWithSubscription } from '@/integr
 import { subscriptionStore } from '@/integrations/supabase/subscriptionStore'
 import { webpush } from '@/integrations/webpush'
 
+const clockFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: config.TIMEZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+})
+
 function currentTime(): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: config.TIMEZONE,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date())
+  return clockFormatter.format(new Date())
 }
 
-function minutesUntil(when: string): number {
-  return Math.max(0, Math.round((new Date(when).getTime() - Date.now()) / 60_000))
+function formatDepartureLine(departure: UpcomingDeparture): string {
+  const status = departure.delayMinutes > 0 ? `+${departure.delayMinutes} min` : 'on time'
+  return `${departure.line} · ${clockFormatter.format(new Date(departure.when))} · ${status}`
 }
 
-function formatDeparturesMessage(
-  originName: string,
-  destinationName: string,
-  departures: UpcomingDeparture[],
-): string | null {
-  const [next, ...rest] = departures
+function formatDeparturesMessage(departures: UpcomingDeparture[]): string | null {
+  if (departures.length === 0) return null
 
-  if (!next) return null
-
-  const status = next.delayMinutes > 0 ? `delayed ${next.delayMinutes} min` : 'on time'
-  let message = `${next.line} from ${originName} to ${destinationName} departs in ${minutesUntil(next.when)} mins (${status}).`
-
-  if (rest[0]) {
-    message += ` Next one in ${minutesUntil(rest[0].when)} mins.`
-  }
-
-  return message
+  return departures.map(formatDepartureLine).join('\n')
 }
 
 async function sendReminderForConfig(commuteConfig: CommuteConfigWithSubscription): Promise<boolean> {
   const departures = await getNextDepartures(commuteConfig.originId, commuteConfig.destinationId)
-  const message = formatDeparturesMessage(commuteConfig.originName, commuteConfig.destinationName, departures)
+  const message = formatDeparturesMessage(departures)
 
   if (!message) {
     logger.info({ commuteConfigId: commuteConfig.id }, 'No upcoming departures to notify about')
@@ -47,7 +37,7 @@ async function sendReminderForConfig(commuteConfig: CommuteConfigWithSubscriptio
   }
 
   const payload = JSON.stringify({
-    title: 'TransitCue',
+    title: `${commuteConfig.originName} → ${commuteConfig.destinationName}`,
     options: {
       body: message,
       icon: '/icons/icon.svg',

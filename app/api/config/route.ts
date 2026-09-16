@@ -11,7 +11,7 @@ const stationSchema = z.object({
 
 const configSchema = z.object({
   clientId: z.string().min(1),
-  endpoint: z.string().url(),
+  endpoint: z.url(),
   keys: z.object({
     auth: z.string().min(1),
     p256dh: z.string().min(1),
