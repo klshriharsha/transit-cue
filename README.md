@@ -35,7 +35,7 @@ type-ahead in the form.
 | Logging            | [`pino`](https://getpino.io) (`pino-pretty` in development)                                                                       |
 | Package manager    | [`pnpm`](https://pnpm.io) 11                                                                                                      |
 | Linting            | ESLint (`eslint-config-next`)                                                                                                     |
-| Scheduling         | External cron (cron-job.org or similar) hitting `/api/cron`                                                                       |
+| Scheduling         | External cron (cron-job.org or similar) hitting `/api/cron`; simulated locally by `pnpm dev:cron` (uses [`dotenv`](https://github.com/motdotla/dotenv) to load `.env.local`) |
 | Hosting            | Vercel                                                                                                                            |
 
 
@@ -112,24 +112,36 @@ require a secure context. Open [https://localhost:3000](https://localhost:3000) 
 certificate warning. Enable notifications, add a commute, and the alert is saved to your local
 database.
 
-### 6. (Optional) Trigger a reminder run
+### 6. (Optional) Simulate the cron trigger
 
-Nothing is scheduled locally, so fire the cron endpoint by hand to test delivery:
+Nothing is scheduled locally by default — in production an external service (cron-job.org)
+hits `/api/cron` once a minute. To get that same cadence locally, run in a second terminal:
+
+```bash
+pnpm dev:cron
+```
+
+This reads `CRON_SECRET` from `.env.local` and calls `POST https://localhost:3000/api/cron`
+on the minute, every minute, until you stop it (Ctrl+C) — so any commute whose push time
+matches the current minute fires a real push, just like in production. Target URL defaults
+to `https://localhost:3000`; override with `CRON_URL` (full URL) or `PORT` (if `pnpm dev` is
+running on a non-default port).
+
+For a one-off trigger instead, `curl` the endpoint directly:
 
 ```bash
 curl -k -X POST https://localhost:3000/api/cron \
   -H "Authorization: Bearer <your CRON_SECRET>"
 ```
 
-It sends pushes for any commute whose push time matches the current minute in `TIMEZONE`.
-
 ## Other scripts
 
 
-| Command      | Does                     |
-| ------------ | ------------------------ |
-| `pnpm build` | production build         |
-| `pnpm start` | serve a production build |
-| `pnpm lint`  | ESLint                   |
+| Command         | Does                                                     |
+| ---------------- | -------------------------------------------------------- |
+| `pnpm build`     | production build                                         |
+| `pnpm start`     | serve a production build                                 |
+| `pnpm lint`      | ESLint                                                    |
+| `pnpm dev:cron`  | simulate the once-a-minute external cron trigger locally |
 
 
