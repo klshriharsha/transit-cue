@@ -2,13 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { getClientId } from '@/lib/client-id'
+import type { Station } from '@/lib/types'
 
 export const MAX_COMMUTE_CONFIGS = 5
-
-export type Station = {
-  id: string
-  name: string
-}
 
 export type CommuteConfig = {
   id: string
