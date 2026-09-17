@@ -56,6 +56,10 @@ export const subscriptionStore = {
     return data as SubscriptionRow
   },
 
+  async findByClientId(clientId: string): Promise<{ id: string } | null> {
+    return selectMaybe('client_id', clientId)
+  },
+
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from('subscriptions').delete().eq('id', id)
 

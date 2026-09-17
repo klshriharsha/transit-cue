@@ -2,17 +2,18 @@
 
 Transit Cue is a small progressive web app that tells you the exact minute to leave for your commute. You pick a departure stop, a destination stop, and a time of day; from then on the app sends a web-push notification at that time with the next three departures for your line — titled "Eberswalder Straße → Nordbahnhof", with a body of "M10 · 08:15 · on time\nM10 · 08:32 · on time\nM10 · 08:47 · +3 min" — so you never sprint for a bus that already left, and still know your options if you miss the next one.
 
-Departure data comes from the VBB (Berlin/Brandenburg) transit network via the HAFAS API. There are no user accounts: a browser is identified by a random `client_id` it generates once and keeps in `localStorage`, and "your data" is the one subscription row (plus its commute config) keyed to that id. The id is decoupled from the push endpoint on purpose — the endpoint rotates every time notifications are toggled off and back on, so keying on it would strand the saved commute. iOS only delivers push to home-screen installs, hence the PWA manifest and service worker.
+Departure data comes from the VBB (Berlin/Brandenburg) transit network via the HAFAS API. There are no user accounts: a browser is identified by a random `client_id` it generates once and keeps in `localStorage`, and "your data" is the one subscription row (plus up to 5 commute configs) keyed to that id. The id is decoupled from the push endpoint on purpose — the endpoint rotates every time notifications are toggled off and back on, so keying on it would strand the saved commutes. iOS only delivers push to home-screen installs, hence the PWA manifest and service worker.
 
 ### How it works
 
 - The browser subscribes to push (`hooks/usePushSubscription.ts`) and the subscription is
 stored via `POST /api/subscribe`, keyed by the browser's `client_id` (`lib/client-id.ts`) so
 that toggling notifications off/on updates the same row instead of creating an orphan.
-- Saving a commute (`POST /api/config`) upserts the origin/destination stops and push time
-against that same subscription row.
+- Saving a commute (`POST /api/config`) adds an origin/destination/push-time row against that
+subscription, up to 5 per subscription; `GET /api/config` lists them and
+`DELETE /api/config/[id]` removes one.
 - When a push send gets `404`/`410` from the push service, the cron handler deletes the dead
-subscription row (the commute config cascades with it).
+subscription row (its commute configs cascade with it).
 - An external cron service (e.g. cron-job.org) calls `GET/POST /api/cron` once a minute with
 a shared bearer secret. The handler finds every commute whose push time matches the current
 minute (in `TIMEZONE`), looks up the next departures from HAFAS, and sends the push.

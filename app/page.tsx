@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { usePushSubscription } from '@/hooks/usePushSubscription'
-import { useCommuteConfig, type Station } from '@/hooks/useCommuteConfig'
+import { MAX_COMMUTE_CONFIGS, useCommuteConfig, type Station } from '@/hooks/useCommuteConfig'
 
 const DAYS: [string, string][] = [
   ['S', 'Sunday'],
@@ -244,7 +244,7 @@ export default function TransitCuePage() {
     setPushTime(currentClock())
   }, [])
   const [days, setDays] = useState<number[]>(DEFAULT_DAYS)
-  const [pending, setPending] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   // Bumped on every StopField swap so the two fields re-sync their internal query text from
@@ -261,20 +261,32 @@ export default function TransitCuePage() {
   const on = push.isSubscribed
   const needsPermission = !push.granted
   const isGranted = push.granted
-  const hasAlerts = commute.savedConfig !== null
+  const alertCount = commute.savedConfigs.length
+  const hasAlerts = alertCount > 0
+  const atCapacity = alertCount >= MAX_COMMUTE_CONFIGS
   const alertsLoading = bootstrapping || commute.isLoading
-  const canSave = Boolean(fromStation && toStation && days.length)
+  const canSave = Boolean(fromStation && toStation && days.length && !atCapacity)
 
   const handleSave = async () => {
     if (!canSave || !fromStation || !toStation) return
-    const result = await commute.save(fromStation, toStation, pushTime)
+    const result = await commute.add(fromStation, toStation, pushTime)
     if (result.config) {
       setFromStation(null)
       setToStation(null)
+      // StopField keeps its own query text internally and only re-syncs it from `value` on an
+      // id change, so clearing the station state above doesn't clear the visible input text.
+      // Remounting both fields (same trick the swap button uses) resets that text too.
+      setSwapKey((k) => k + 1)
       flash('Alert saved · ' + formatClock(pushTime))
     } else {
       flash(result.error)
     }
+  }
+
+  const handleDelete = async (id: string) => {
+    const result = await commute.remove(id)
+    setPendingDeleteId(null)
+    if (result.error) flash(result.error)
   }
 
   return (
@@ -390,7 +402,7 @@ export default function TransitCuePage() {
               <div className="mt-[3px] text-[13.5px] text-ink-520">
                 {on
                   ? hasAlerts
-                    ? 'Delivering 1 scheduled alert to this device.'
+                    ? `Delivering ${alertCount} scheduled alert${alertCount === 1 ? '' : 's'} to this device.`
                     : 'Ready — add your first alert below.'
                   : 'Paused. Your alerts are kept, but nothing will be pushed.'}
               </div>
@@ -525,17 +537,29 @@ export default function TransitCuePage() {
                 canSave ? 'cursor-pointer bg-teal-deep' : 'cursor-not-allowed bg-sand-880'
               }`}
             >
-              {commute.isSaving ? 'Saving…' : canSave ? 'Schedule this alert' : 'Add both stops to continue'}
+              {commute.isSaving
+                ? 'Saving…'
+                : atCapacity
+                  ? `Limit of ${MAX_COMMUTE_CONFIGS} alerts reached`
+                  : canSave
+                    ? 'Schedule this alert'
+                    : 'Add both stops to continue'}
             </button>
             <div className="mt-2.5 min-h-[18px] text-center text-[12.5px] text-sand-620">
-              {canSave ? formatClock(pushTime) + ' · ' + daysLabel(days) : 'Pick a suggestion for both stops to continue.'}
+              {atCapacity
+                ? 'Delete an alert on the right to add another.'
+                : canSave
+                  ? formatClock(pushTime) + ' · ' + daysLabel(days)
+                  : 'Pick a suggestion for both stops to continue.'}
             </div>
           </section>
 
           <section className="min-w-0 flex-[1_1_400px]">
             <div className="flex items-baseline gap-2.5 px-1 pb-3">
               <h2 className="text-[19px] font-bold tracking-[-0.02em]">Your alerts</h2>
-              <span className="font-mono text-[12px] text-sand-600">{!alertsLoading && hasAlerts ? '1 scheduled' : ''}</span>
+              <span className="font-mono text-[12px] text-sand-600">
+                {!alertsLoading && hasAlerts ? `${alertCount} of ${MAX_COMMUTE_CONFIGS} scheduled` : ''}
+              </span>
             </div>
 
             {alertsLoading && (
@@ -568,66 +592,67 @@ export default function TransitCuePage() {
             )}
 
             <div className="flex flex-col gap-3">
-              {!alertsLoading && commute.savedConfig && (
-                <div
-                  className={`animate-in-260 rounded-[18px] border border-sand-900 bg-sand-1000 px-[18px] py-4 shadow-card ${on ? 'opacity-100' : 'opacity-55'}`}
-                >
-                  <div className="flex items-start gap-3.5">
-                    <div className="min-w-[76px] flex-none text-left">
-                      <div className="font-mono text-[22px] leading-none font-bold tracking-[-0.03em]">
-                        {formatClock(commute.savedConfig.pushTime)}
+              {!alertsLoading &&
+                commute.savedConfigs.map((config) => {
+                  const pending = pendingDeleteId === config.id
+                  return (
+                    <div
+                      key={config.id}
+                      className={`animate-in-260 rounded-[18px] border border-sand-900 bg-sand-1000 px-[18px] py-4 shadow-card ${on ? 'opacity-100' : 'opacity-55'}`}
+                    >
+                      <div className="flex items-start gap-3.5">
+                        <div className="min-w-[76px] flex-none text-left">
+                          <div className="font-mono text-[22px] leading-none font-bold tracking-[-0.03em]">
+                            {formatClock(config.pushTime)}
+                          </div>
+                          <div className="mt-[5px] font-mono text-[10px] tracking-[0.1em] text-sand-620 uppercase">
+                            every day
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-[9px]">
+                            <div className="h-[9px] w-[9px] flex-none rounded-full border-[2.5px] border-teal-accent" />
+                            <div className="min-w-0 flex-1 overflow-hidden text-[14.5px] font-medium text-ellipsis whitespace-nowrap">{config.origin.name}</div>
+                          </div>
+                          <div className="my-0.5 ml-[5.5px] h-[10px] w-0 border-l-2 border-dashed border-sand-880" />
+                          <div className="flex items-center gap-[9px]">
+                            <div className="mx-[0.5px] h-2 w-2 flex-none rounded-[2px] bg-amber-accent" />
+                            <div className="min-w-0 flex-1 overflow-hidden text-[14.5px] font-medium text-ellipsis whitespace-nowrap">{config.destination.name}</div>
+                          </div>
+                          <div className="mt-[9px] text-[12.5px] text-sand-600">
+                            {on ? relativeLabel(nextOccurrence(config.pushTime), formatClock) : 'paused — no pushes'}
+                          </div>
+                        </div>
+                        {!pending && (
+                          <button
+                            onClick={() => setPendingDeleteId(config.id)}
+                            aria-label="Delete alert"
+                            className="h-8 w-8 flex-none rounded-[9px] border border-sand-920 bg-sand-990 text-[15px] leading-none text-ink-550 hover:border-red-hover-border hover:bg-red-hover-bg hover:text-red-hover-text"
+                          >
+                            ×
+                          </button>
+                        )}
                       </div>
-                      <div className="mt-[5px] font-mono text-[10px] tracking-[0.1em] text-sand-620 uppercase">
-                        every day
-                      </div>
+                      {pending && (
+                        <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-sand-940 pt-[13px]">
+                          <span className="flex-[1_1_140px] text-[13.5px] text-ink-450">Delete this alert?</span>
+                          <button
+                            onClick={() => setPendingDeleteId(null)}
+                            className="rounded-[9px] border border-sand-880 bg-sand-1000 px-3.5 py-2 text-[13.5px] font-medium text-ink-400"
+                          >
+                            Keep
+                          </button>
+                          <button
+                            onClick={() => handleDelete(config.id)}
+                            className="rounded-[9px] border-0 bg-red-accent px-3.5 py-2 text-[13.5px] font-semibold text-red-on-accent"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-[9px]">
-                        <div className="h-[9px] w-[9px] flex-none rounded-full border-[2.5px] border-teal-accent" />
-                        <div className="min-w-0 flex-1 overflow-hidden text-[14.5px] font-medium text-ellipsis whitespace-nowrap">{commute.savedConfig.origin.name}</div>
-                      </div>
-                      <div className="my-0.5 ml-[5.5px] h-[10px] w-0 border-l-2 border-dashed border-sand-880" />
-                      <div className="flex items-center gap-[9px]">
-                        <div className="mx-[0.5px] h-2 w-2 flex-none rounded-[2px] bg-amber-accent" />
-                        <div className="min-w-0 flex-1 overflow-hidden text-[14.5px] font-medium text-ellipsis whitespace-nowrap">{commute.savedConfig.destination.name}</div>
-                      </div>
-                      <div className="mt-[9px] text-[12.5px] text-sand-600">
-                        {on ? relativeLabel(nextOccurrence(commute.savedConfig.pushTime), formatClock) : 'paused — no pushes'}
-                      </div>
-                    </div>
-                    {!pending && (
-                      <button
-                        onClick={() => setPending(true)}
-                        aria-label="Delete alert"
-                        className="h-8 w-8 flex-none rounded-[9px] border border-sand-920 bg-sand-990 text-[15px] leading-none text-ink-550 hover:border-red-hover-border hover:bg-red-hover-bg hover:text-red-hover-text"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                  {pending && (
-                    <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-sand-940 pt-[13px]">
-                      <span className="flex-[1_1_140px] text-[13.5px] text-ink-450">Delete this alert?</span>
-                      <button
-                        onClick={() => setPending(false)}
-                        className="rounded-[9px] border border-sand-880 bg-sand-1000 px-3.5 py-2 text-[13.5px] font-medium text-ink-400"
-                      >
-                        Keep
-                      </button>
-                      <button
-                        onClick={() => {
-                          // TODO: wire to a real DELETE /api/config once that endpoint exists —
-                          // the backend is upsert-only today, so there is nothing to delete yet.
-                          setPending(false)
-                        }}
-                        className="rounded-[9px] border-0 bg-red-accent px-3.5 py-2 text-[13.5px] font-semibold text-red-on-accent"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+                  )
+                })}
             </div>
 
             {!alertsLoading && hasAlerts && (
