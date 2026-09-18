@@ -135,6 +135,71 @@ curl -k -X POST https://localhost:3000/api/cron \
   -H "Authorization: Bearer <your CRON_SECRET>"
 ```
 
+## Deploying
+
+Once set up, the pipeline is: **open a PR → Vercel builds a preview deployment and, if the PR
+touches `supabase/**`, CI dry-runs the migration → merge to `main` → CI applies any pending
+migrations to production and Vercel deploys the merged code to production.** No manual deploy
+step, ever, after the one-time setup below.
+
+### One-time setup
+
+1. **Supabase (production project).** Create it at
+[supabase.com/dashboard](https://supabase.com/dashboard) (free tier) if you haven't already.
+From Project Settings, collect:
+   - **API → Project URL and `service_role` key** — these become `SUPABASE_URL` /
+   `SUPABASE_SERVICE_ROLE_KEY` in Vercel (step 3).
+   - **Database → Database password**, the project's **ref** (the `<ref>` in
+   `https://<ref>.supabase.co`), and a personal
+   [access token](https://supabase.com/dashboard/account/tokens) — these become the three
+   GitHub Action secrets below. Never paste these into a chat or commit them; set them
+   directly in the GitHub/Vercel UI (or via `gh secret set <NAME>`, which prompts for the
+   value without echoing it).
+
+2. **Wire up the existing migrations workflow.** In the GitHub repo, add these under
+Settings → Secrets and variables → Actions:
+
+   | Secret | Value |
+   | --- | --- |
+   | `SUPABASE_ACCESS_TOKEN` | the personal access token above |
+   | `SUPABASE_PROJECT_ID` | the project ref |
+   | `SUPABASE_DB_PASSWORD` | the database password |
+
+   Then bootstrap the (empty) production schema once: Actions tab → **Database migrations** →
+   **Run workflow** (see [`supabase/README.md`](supabase/README.md) for details). Every future
+   migration lands automatically on merge — nothing further to do here.
+
+3. **Vercel (app hosting + CI/CD).** [Import the GitHub repo](https://vercel.com/new) as a new
+Vercel project (free Hobby tier); the Next.js preset is auto-detected, no config needed. In
+Project Settings → Environment Variables, add (Production — and Preview too, if you want PRs
+to hit a real backend):
+
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — from step 1.
+   - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` — generate with
+   `pnpm setup:vapid` (public key goes in both of the last two).
+   - `VAPID_SUBJECT` — a `mailto:` address.
+   - `CRON_SECRET` — a long random string, e.g. `openssl rand -hex 32`.
+   - `TIMEZONE`, `LOG_LEVEL` — optional, same defaults as local dev.
+
+   This single connection is the CI/CD pipeline for the app: every push to `main` deploys to
+   production, every PR gets its own preview URL, automatically.
+
+4. **cron-job.org (scheduler).** This lives outside the pipeline — it just needs to point at
+your stable production URL once. Sign up free at [cron-job.org](https://cron-job.org), create a
+job for `https://<your-vercel-domain>/api/cron`, interval **every 1 minute**, with a custom
+header `Authorization: Bearer <your CRON_SECRET>`.
+
+5. **Verify.** Open the production URL, enable notifications, add a commute for a minute or two
+in the future, and confirm the push arrives.
+
+### Notes
+
+- Free-tier Supabase projects pause after 7 days with no API activity. For an alpha with
+sparse usage, an idle project may need a manual resume from the dashboard before the next cron
+run succeeds.
+- Vercel's Hobby cron is capped at once/day, which is why the scheduler lives outside Vercel
+(`/api/cron` accepts `GET` or `POST` from anywhere with the right bearer token).
+
 ## Other scripts
 
 

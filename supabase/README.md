@@ -112,6 +112,9 @@ by CI (below).
 the check logs: exactly which migrations would run. Nothing is applied.
 - **Merge to `main`** → `supabase db push` applies every pending migration to the production
 project.
+- **Manual run** (Actions tab → "Database migrations" → Run workflow) → same as a merge to
+`main`. Use this once to bootstrap a freshly created production project (its schema starts
+empty, and the path filters above only fire when a migration file itself changes).
 
 It needs three repository secrets (Settings → Secrets and variables → Actions):
 
