@@ -19,6 +19,7 @@ const configSchema = z.object({
   origin: stationSchema,
   destination: stationSchema,
   pushTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'pushTime must be in HH:MM format'),
+  repeatDays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
 })
 
 export function serializeConfig(commuteConfig: CommuteConfigRow) {
@@ -27,6 +28,7 @@ export function serializeConfig(commuteConfig: CommuteConfigRow) {
     origin: { id: commuteConfig.originId, name: commuteConfig.originName },
     destination: { id: commuteConfig.destinationId, name: commuteConfig.destinationName },
     pushTime: commuteConfig.pushTime,
+    repeatDays: commuteConfig.repeatDays,
   }
 }
 
@@ -45,7 +47,7 @@ async function handlePost(request: NextRequest) {
     return NextResponse.json({ error: 'A valid commute configuration is required.' }, { status: 400 })
   }
 
-  const { clientId, endpoint, keys, origin, destination, pushTime } = result.data
+  const { clientId, endpoint, keys, origin, destination, pushTime, repeatDays } = result.data
   const subscription = await subscriptionStore.upsert(clientId, { endpoint, keys })
 
   try {
@@ -55,6 +57,7 @@ async function handlePost(request: NextRequest) {
       destinationId: destination.id,
       destinationName: destination.name,
       pushTime,
+      repeatDays,
     })
 
     return NextResponse.json(serializeConfig(commuteConfig), { status: 201 })

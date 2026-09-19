@@ -1,5 +1,5 @@
 import { MAX_COMMUTE_CONFIGS, type CommuteConfig } from '@/hooks/useCommuteConfig'
-import { nextOccurrence, relativeLabel } from '@/lib/format'
+import { daysLabel, nextOccurrence, relativeLabel } from '@/lib/format'
 
 type AlertsListProps = {
   alertsLoading: boolean
@@ -78,7 +78,9 @@ export function AlertsList({
                     <div className="font-mono text-[22px] leading-none font-bold tracking-[-0.03em]">
                       {formatClock(config.pushTime)}
                     </div>
-                    <div className="mt-1.25 font-mono text-[10px] tracking-[0.1em] text-sand-620 uppercase">every day</div>
+                    <div className="mt-1.25 font-mono text-[10px] tracking-[0.1em] text-sand-620 uppercase">
+                      {daysLabel(config.repeatDays)}
+                    </div>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2.25">

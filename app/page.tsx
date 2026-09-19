@@ -48,7 +48,7 @@ export default function TransitCuePage() {
 
   const handleSave = async () => {
     if (!canSave || !fromStation || !toStation) return
-    const result = await commute.add(fromStation, toStation, activePushTime)
+    const result = await commute.add(fromStation, toStation, activePushTime, days)
     if (result.config) {
       setFromStation(null)
       setToStation(null)

@@ -12,8 +12,21 @@ const clockFormatter = new Intl.DateTimeFormat('en-GB', {
   hour12: false,
 })
 
+const weekdayFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: config.TIMEZONE,
+  weekday: 'short',
+})
+
+// Matches the `repeat_days` bitmask convention: 0 = Sunday .. 6 = Saturday.
+const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+
 function currentTime(): string {
   return clockFormatter.format(new Date())
+}
+
+/** Today's day-of-week in config.TIMEZONE, not the server's local zone. */
+function currentDayOfWeek(): number {
+  return WEEKDAY_INDEX[weekdayFormatter.format(new Date())]
 }
 
 function formatDepartureLine(departure: UpcomingDeparture): string {
@@ -78,9 +91,9 @@ export type TransitReminderResult = {
   failed: number
 }
 
-/** Sends reminders for every commute config whose pushTime matches the current HH:MM in config.TIMEZONE. */
+/** Sends reminders for every commute config due right now: pushTime matches the current HH:MM in config.TIMEZONE and today's day-of-week is in its repeat days. */
 export async function runDueReminders(): Promise<TransitReminderResult> {
-  const commuteConfigs = await commuteConfigStore.dueAt(currentTime())
+  const commuteConfigs = await commuteConfigStore.dueAt(currentTime(), currentDayOfWeek())
   const results = await Promise.allSettled(commuteConfigs.map((commuteConfig) => sendReminderForConfig(commuteConfig)))
   const sent = results.filter((result) => result.status === 'fulfilled' && result.value).length
 

@@ -11,6 +11,7 @@ export type CommuteConfig = {
   origin: Station
   destination: Station
   pushTime: string
+  repeatDays: number[]
 }
 
 type SaveInput = {
@@ -20,6 +21,7 @@ type SaveInput = {
   origin: Station
   destination: Station
   pushTime: string
+  repeatDays: number[]
 }
 
 async function fetchCommuteConfigs(endpoint: string): Promise<CommuteConfig[]> {
@@ -102,6 +104,7 @@ export function useCommuteConfig(subscription: PushSubscription | null) {
     origin: Station,
     destination: Station,
     pushTime: string,
+    repeatDays: number[],
   ): Promise<{ config: CommuteConfig; error: null } | { config: null; error: string }> => {
     if (!subscription) {
       const message = 'Enable notifications before saving preferences.'
@@ -134,6 +137,7 @@ export function useCommuteConfig(subscription: PushSubscription | null) {
         origin,
         destination,
         pushTime,
+        repeatDays,
       })
 
       setSavedConfigs((configs) => configs.concat(config))
