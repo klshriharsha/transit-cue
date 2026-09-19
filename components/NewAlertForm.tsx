@@ -1,6 +1,8 @@
 import { MAX_COMMUTE_CONFIGS } from '@/hooks/useCommuteConfig'
+import type { NotificationPreviewState } from '@/hooks/useNotificationPreview'
 import { currentClock, DAYS, daysLabel } from '@/lib/format'
 import type { Station } from '@/lib/types'
+import { NotificationPreviewCard } from './NotificationPreviewCard'
 import { StopField } from './StopField'
 
 type NewAlertFormProps = {
@@ -10,6 +12,8 @@ type NewAlertFormProps = {
   onToChange: (station: Station | null) => void
   onSwap: () => void
   swapKey: number
+  previewState: NotificationPreviewState
+  onRefreshPreview: () => void
   pushTime: string
   onPushTimeChange: (value: string) => void
   clockHint: string
@@ -29,6 +33,8 @@ export function NewAlertForm({
   onToChange,
   onSwap,
   swapKey,
+  previewState,
+  onRefreshPreview,
   pushTime,
   onPushTimeChange,
   clockHint,
@@ -85,6 +91,12 @@ export function NewAlertForm({
           </button>
         </div>
       </div>
+
+      {fromStation && toStation && (
+        <div className="mt-4">
+          <NotificationPreviewCard state={previewState} onRefresh={onRefreshPreview} />
+        </div>
+      )}
 
       <div className="my-5 h-px bg-sand-930" />
 

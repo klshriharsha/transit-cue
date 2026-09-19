@@ -9,6 +9,7 @@ import { PushToggleCard } from '@/components/PushToggleCard'
 import { Toast } from '@/components/Toast'
 import { useClockFormat } from '@/hooks/useClockFormat'
 import { MAX_COMMUTE_CONFIGS, useCommuteConfig } from '@/hooks/useCommuteConfig'
+import { useNotificationPreview } from '@/hooks/useNotificationPreview'
 import { usePushSubscription } from '@/hooks/usePushSubscription'
 import { useToast } from '@/hooks/useToast'
 import { currentClock, DEFAULT_DAYS } from '@/lib/format'
@@ -22,6 +23,7 @@ export default function TransitCuePage() {
 
   const [fromStation, setFromStation] = useState<Station | null>(null)
   const [toStation, setToStation] = useState<Station | null>(null)
+  const preview = useNotificationPreview(fromStation, toStation)
   // Starts unset so the picker's SSR markup is stable, then snaps to the viewer's
   // current time once mounted — set during render (like StopField's prop sync
   // below) instead of a useEffect, so there's no extra commit-then-correct step.
@@ -120,6 +122,8 @@ export default function TransitCuePage() {
             onToChange={setToStation}
             onSwap={handleSwap}
             swapKey={swapKey}
+            previewState={preview}
+            onRefreshPreview={preview.refresh}
             pushTime={activePushTime}
             onPushTimeChange={setPushTime}
             clockHint={clockHint}

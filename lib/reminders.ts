@@ -1,5 +1,6 @@
 import { config } from '@/lib/config'
 import { logger } from '@/lib/logger'
+import type { Station } from '@/lib/types'
 import { getNextDepartures, type UpcomingDeparture } from '@/integrations/hafas/departures'
 import { commuteConfigStore, type CommuteConfigWithSubscription } from '@/integrations/supabase/commuteConfigStore'
 import { subscriptionStore } from '@/integrations/supabase/subscriptionStore'
@@ -40,19 +41,40 @@ function formatDeparturesMessage(departures: UpcomingDeparture[]): string | null
   return departures.map(formatDepartureLine).join('\n')
 }
 
-async function sendReminderForConfig(commuteConfig: CommuteConfigWithSubscription): Promise<boolean> {
-  const departures = await getNextDepartures(commuteConfig.originId, commuteConfig.destinationId)
-  const message = formatDeparturesMessage(departures)
+export type NotificationPreview = {
+  title: string
+  body: string
+}
 
-  if (!message) {
+/**
+ * Builds the exact title/body a push notification would carry for this origin/destination right
+ * now. Shared by the cron reminder sender and the onboarding preview API so the preview never
+ * drifts from what actually gets sent.
+ */
+export async function buildNotificationPreview(origin: Station, destination: Station): Promise<NotificationPreview | null> {
+  const departures = await getNextDepartures(origin.id, destination.id)
+  const body = formatDeparturesMessage(departures)
+
+  if (!body) return null
+
+  return { title: `${origin.name} → ${destination.name}`, body }
+}
+
+async function sendReminderForConfig(commuteConfig: CommuteConfigWithSubscription): Promise<boolean> {
+  const preview = await buildNotificationPreview(
+    { id: commuteConfig.originId, name: commuteConfig.originName },
+    { id: commuteConfig.destinationId, name: commuteConfig.destinationName },
+  )
+
+  if (!preview) {
     logger.info({ commuteConfigId: commuteConfig.id }, 'No upcoming departures to notify about')
     return false
   }
 
   const payload = JSON.stringify({
-    title: `${commuteConfig.originName} → ${commuteConfig.destinationName}`,
+    title: preview.title,
     options: {
-      body: message,
+      body: preview.body,
       icon: '/icons/icon.svg',
       badge: '/icons/icon.svg',
       tag: 'transitcue-reminder',
