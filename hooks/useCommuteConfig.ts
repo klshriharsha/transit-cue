@@ -69,6 +69,7 @@ export function useCommuteConfig(subscription: PushSubscription | null) {
   // "loading" rather than "no alerts" so nothing flashes before the fetch settles.
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [trackedEndpoint, setTrackedEndpoint] = useState<string | null | undefined>(undefined)
 
@@ -152,6 +153,9 @@ export function useCommuteConfig(subscription: PushSubscription | null) {
   }
 
   const remove = async (id: string): Promise<{ error: null } | { error: string }> => {
+    setIsDeleting(true)
+    setError(null)
+
     try {
       await deleteCommuteConfig(id, getClientId())
       setSavedConfigs((configs) => configs.filter((config) => config.id !== id))
@@ -160,8 +164,10 @@ export function useCommuteConfig(subscription: PushSubscription | null) {
       const message = err instanceof Error ? err.message : 'Could not delete this alert.'
       setError(message)
       return { error: message }
+    } finally {
+      setIsDeleting(false)
     }
   }
 
-  return { savedConfigs, isLoading, isSaving, error, add, remove }
+  return { savedConfigs, isLoading, isSaving, isDeleting, error, add, remove }
 }

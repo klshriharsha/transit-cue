@@ -8,6 +8,7 @@ type AlertsListProps = {
   savedConfigs: CommuteConfig[]
   on: boolean
   pendingDeleteId: string | null
+  isDeleting: boolean
   onRequestDelete: (id: string) => void
   onCancelDelete: () => void
   onConfirmDelete: (id: string) => void
@@ -21,6 +22,7 @@ export function AlertsList({
   savedConfigs,
   on,
   pendingDeleteId,
+  isDeleting,
   onRequestDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -68,6 +70,7 @@ export function AlertsList({
         {!alertsLoading &&
           savedConfigs.map((config) => {
             const pending = pendingDeleteId === config.id
+            const deleting = pending && isDeleting
             return (
               <div
                 key={config.id}
@@ -111,15 +114,21 @@ export function AlertsList({
                     <span className="flex-[1_1_140px] text-[13.5px] text-ink-450">Delete this alert?</span>
                     <button
                       onClick={onCancelDelete}
-                      className="rounded-[9px] border border-sand-880 bg-sand-1000 px-3.5 py-2 text-[13.5px] font-medium text-ink-400"
+                      disabled={deleting}
+                      className="rounded-[9px] border border-sand-880 bg-sand-1000 px-3.5 py-2 text-[13.5px] font-medium text-ink-400 disabled:cursor-wait disabled:opacity-55"
                     >
                       Keep
                     </button>
                     <button
                       onClick={() => onConfirmDelete(config.id)}
-                      className="rounded-[9px] border-0 bg-red-accent px-3.5 py-2 text-[13.5px] font-semibold text-red-on-accent"
+                      disabled={deleting}
+                      aria-busy={deleting}
+                      className="flex items-center gap-2 rounded-[9px] border-0 bg-red-accent px-3.5 py-2 text-[13.5px] font-semibold text-red-on-accent disabled:cursor-wait disabled:opacity-75"
                     >
-                      Delete
+                      {deleting && (
+                        <span className="block h-3 w-3 animate-spin-fast rounded-full border-2 border-red-on-accent border-t-transparent" />
+                      )}
+                      {deleting ? 'Deleting…' : 'Delete'}
                     </button>
                   </div>
                 )}

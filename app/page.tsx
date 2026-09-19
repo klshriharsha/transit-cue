@@ -139,6 +139,7 @@ export default function TransitCuePage() {
             savedConfigs={commute.savedConfigs}
             on={on}
             pendingDeleteId={pendingDeleteId}
+            isDeleting={commute.isDeleting}
             onRequestDelete={setPendingDeleteId}
             onCancelDelete={() => setPendingDeleteId(null)}
             onConfirmDelete={handleDelete}
