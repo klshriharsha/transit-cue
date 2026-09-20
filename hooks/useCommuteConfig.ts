@@ -12,6 +12,7 @@ export type CommuteConfig = {
   destination: Station
   pushTime: string
   repeatDays: number[]
+  paused: boolean
 }
 
 type SaveInput = {
@@ -63,6 +64,21 @@ async function deleteCommuteConfig(id: string, clientId: string): Promise<void> 
   }
 }
 
+async function updateCommuteConfigPaused(id: string, clientId: string, paused: boolean): Promise<CommuteConfig> {
+  const response = await fetch(`/api/config/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clientId, paused }),
+  })
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null
+    throw new Error(body?.error ?? (paused ? 'The API could not pause this alert.' : 'The API could not resume this alert.'))
+  }
+
+  return response.json() as Promise<CommuteConfig>
+}
+
 export function useCommuteConfig(subscription: PushSubscription | null) {
   const [savedConfigs, setSavedConfigs] = useState<CommuteConfig[]>([])
   // Starts true: the first load hasn't run yet, and the UI should treat that as
@@ -70,6 +86,7 @@ export function useCommuteConfig(subscription: PushSubscription | null) {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [pausingId, setPausingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [trackedEndpoint, setTrackedEndpoint] = useState<string | null | undefined>(undefined)
 
@@ -169,5 +186,22 @@ export function useCommuteConfig(subscription: PushSubscription | null) {
     }
   }
 
-  return { savedConfigs, isLoading, isSaving, isDeleting, error, add, remove }
+  const setPaused = async (id: string, paused: boolean): Promise<{ error: null } | { error: string }> => {
+    setPausingId(id)
+    setError(null)
+
+    try {
+      const config = await updateCommuteConfigPaused(id, getClientId(), paused)
+      setSavedConfigs((configs) => configs.map((existing) => (existing.id === id ? config : existing)))
+      return { error: null }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : paused ? 'Could not pause this alert.' : 'Could not resume this alert.'
+      setError(message)
+      return { error: message }
+    } finally {
+      setPausingId(null)
+    }
+  }
+
+  return { savedConfigs, isLoading, isSaving, isDeleting, pausingId, error, add, remove, setPaused }
 }

@@ -80,6 +80,11 @@ export default function TransitCuePage() {
     if (result.error) flash(result.error)
   }
 
+  const handleTogglePause = async (id: string, paused: boolean) => {
+    const result = await commute.setPaused(id, paused)
+    if (result.error) flash(result.error)
+  }
+
   return (
     <div className="min-h-screen bg-sand-972 pb-16 font-sans text-ink-240">
       <AppHeader bootstrapping={bootstrapping} on={on} isGranted={isGranted} />
@@ -144,9 +149,11 @@ export default function TransitCuePage() {
             on={on}
             pendingDeleteId={pendingDeleteId}
             isDeleting={commute.isDeleting}
+            pausingId={commute.pausingId}
             onRequestDelete={setPendingDeleteId}
             onCancelDelete={() => setPendingDeleteId(null)}
             onConfirmDelete={handleDelete}
+            onTogglePause={handleTogglePause}
             formatClock={formatClock}
           />
         </div>

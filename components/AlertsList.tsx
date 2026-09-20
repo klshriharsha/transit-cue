@@ -9,9 +9,11 @@ type AlertsListProps = {
   on: boolean
   pendingDeleteId: string | null
   isDeleting: boolean
+  pausingId: string | null
   onRequestDelete: (id: string) => void
   onCancelDelete: () => void
   onConfirmDelete: (id: string) => void
+  onTogglePause: (id: string, paused: boolean) => void
   formatClock: (value: string | Date) => string
 }
 
@@ -23,9 +25,11 @@ export function AlertsList({
   on,
   pendingDeleteId,
   isDeleting,
+  pausingId,
   onRequestDelete,
   onCancelDelete,
   onConfirmDelete,
+  onTogglePause,
   formatClock,
 }: AlertsListProps) {
   return (
@@ -71,14 +75,20 @@ export function AlertsList({
           savedConfigs.map((config) => {
             const pending = pendingDeleteId === config.id
             const deleting = pending && isDeleting
+            const paused = config.paused
+            const pausing = pausingId === config.id
             return (
               <div
                 key={config.id}
-                className={`animate-in-260 rounded-[18px] border border-sand-900 bg-sand-1000 px-4.5 py-4 shadow-card ${on ? 'opacity-100' : 'opacity-55'}`}
+                className={`animate-in-260 rounded-[18px] border px-4.5 py-4 shadow-card ${
+                  paused ? 'border-sand-920 bg-sand-990' : 'border-sand-900 bg-sand-1000'
+                } ${on ? 'opacity-100' : 'opacity-55'}`}
               >
                 <div className="flex items-start gap-3.5">
                   <div className="min-w-19 flex-none text-left">
-                    <div className="font-mono text-[22px] leading-none font-bold tracking-[-0.03em]">
+                    <div
+                      className={`font-mono text-[22px] leading-none font-bold tracking-[-0.03em] ${paused ? 'text-ink-550' : ''}`}
+                    >
                       {formatClock(config.pushTime)}
                     </div>
                     <div className="mt-1.25 font-mono text-[10px] tracking-[0.1em] text-sand-620 uppercase">
@@ -86,9 +96,16 @@ export function AlertsList({
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2.25">
-                      <div className="h-2.25 w-2.25 flex-none rounded-full border-[2.5px] border-teal-accent" />
-                      <div className="min-w-0 flex-1 overflow-hidden text-[14.5px] font-medium text-ellipsis whitespace-nowrap">{config.origin.name}</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 flex-1 items-center gap-2.25">
+                        <div className="h-2.25 w-2.25 flex-none rounded-full border-[2.5px] border-teal-accent" />
+                        <div className="min-w-0 flex-1 overflow-hidden text-[14.5px] font-medium text-ellipsis whitespace-nowrap">{config.origin.name}</div>
+                      </div>
+                      {paused && (
+                        <span className="inline-flex flex-none items-center gap-1 rounded-full bg-amber-tint px-2 py-0.75 font-mono text-[10px] tracking-[0.08em] text-amber-text uppercase">
+                          Paused
+                        </span>
+                      )}
                     </div>
                     <div className="my-0.5 ml-[5.5px] h-2.5 w-0 border-l-2 border-dashed border-sand-880" />
                     <div className="flex items-center gap-2.25">
@@ -96,17 +113,39 @@ export function AlertsList({
                       <div className="min-w-0 flex-1 overflow-hidden text-[14.5px] font-medium text-ellipsis whitespace-nowrap">{config.destination.name}</div>
                     </div>
                     <div className="mt-2.25 text-[12.5px] text-sand-600">
-                      {on ? relativeLabel(nextOccurrence(config.pushTime), formatClock) : 'paused — no pushes'}
+                      {!on ? 'notifications off — no pushes' : paused ? 'paused — no pushes' : relativeLabel(nextOccurrence(config.pushTime), formatClock)}
                     </div>
                   </div>
                   {!pending && (
-                    <button
-                      onClick={() => onRequestDelete(config.id)}
-                      aria-label="Delete alert"
-                      className="h-8 w-8 flex-none rounded-[9px] border border-sand-920 bg-sand-990 text-[15px] leading-none text-ink-550 hover:border-red-hover-border hover:bg-red-hover-bg hover:text-red-hover-text"
-                    >
-                      ×
-                    </button>
+                    <div className="flex flex-none items-center gap-2">
+                      <button
+                        onClick={() => onTogglePause(config.id, !paused)}
+                        disabled={pausing}
+                        aria-busy={pausing}
+                        aria-label={paused ? 'Resume alert' : 'Pause alert'}
+                        className="grid h-8 w-8 flex-none place-items-center rounded-[9px] border border-sand-920 bg-sand-990 text-ink-550 hover:border-sand-880 hover:bg-sand-980 disabled:cursor-wait disabled:opacity-60"
+                      >
+                        {pausing ? (
+                          <span className="block h-3 w-3 animate-spin-fast rounded-full border-2 border-ink-550 border-t-transparent" />
+                        ) : paused ? (
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <path d="M3.5 2.3c0-.9 1-1.45 1.77-.97l8.5 5.2c.73.45.73 1.5 0 1.94l-8.5 5.2c-.77.48-1.77-.07-1.77-.97V2.3Z" />
+                          </svg>
+                        ) : (
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <rect x="3" y="2" width="3.5" height="12" rx="1" />
+                            <rect x="9.5" y="2" width="3.5" height="12" rx="1" />
+                          </svg>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => onRequestDelete(config.id)}
+                        aria-label="Delete alert"
+                        className="h-8 w-8 flex-none rounded-[9px] border border-sand-920 bg-sand-990 text-[15px] leading-none text-ink-550 hover:border-red-hover-border hover:bg-red-hover-bg hover:text-red-hover-text"
+                      >
+                        ×
+                      </button>
+                    </div>
                   )}
                 </div>
                 {pending && (

@@ -29,6 +29,7 @@ export function serializeConfig(commuteConfig: CommuteConfigRow) {
     destination: { id: commuteConfig.destinationId, name: commuteConfig.destinationName },
     pushTime: commuteConfig.pushTime,
     repeatDays: commuteConfig.repeatDays,
+    paused: commuteConfig.paused,
   }
 }
 

@@ -32,6 +32,7 @@ export type CommuteConfigRow = {
   destinationName: string
   pushTime: string
   repeatDays: number[]
+  paused: boolean
 }
 
 export type CommuteConfigWithSubscription = CommuteConfigRow & {
@@ -46,6 +47,7 @@ type RawConfigRow = {
   destination_name: string
   push_time: string
   repeat_days: number
+  paused: boolean
 }
 
 type RawConfigRowWithSubscription = RawConfigRow & {
@@ -59,7 +61,7 @@ type RawDueConfigRow = RawConfigRow & {
   auth: string
 }
 
-const CONFIG_COLUMNS = 'id, origin_id, origin_name, destination_id, destination_name, push_time, repeat_days'
+const CONFIG_COLUMNS = 'id, origin_id, origin_name, destination_id, destination_name, push_time, repeat_days, paused'
 const CONFIG_WITH_SUBSCRIPTION_COLUMNS = `${CONFIG_COLUMNS}, subscription:subscriptions(id, endpoint, p256dh, auth)`
 
 /** Packs `Date.getDay()` values into the bitmask stored in `repeat_days` (bit i == day i). */
@@ -81,6 +83,7 @@ function mapConfigRow(row: RawConfigRow): CommuteConfigRow {
     destinationName: row.destination_name,
     pushTime: row.push_time,
     repeatDays: maskToDays(row.repeat_days),
+    paused: row.paused,
   }
 }
 
@@ -135,6 +138,21 @@ export const commuteConfigStore = {
     const { error } = await supabase.from('commute_configs').delete().eq('id', id).eq('subscription_id', subscriptionId)
 
     if (error) throw new Error(`Failed to delete commute config: ${error.message}`)
+  },
+
+  /** Pauses/resumes a commute config, scoped to `subscriptionId` so one subscription can't mutate another's row. */
+  async setPaused(id: string, subscriptionId: string, paused: boolean): Promise<CommuteConfigRow> {
+    const { data: row, error } = await supabase
+      .from('commute_configs')
+      .update({ paused })
+      .eq('id', id)
+      .eq('subscription_id', subscriptionId)
+      .select(CONFIG_COLUMNS)
+      .single()
+
+    if (error) throw new Error(`Failed to update commute config: ${error.message}`)
+
+    return mapConfigRow(row as RawConfigRow)
   },
 
   async listBySubscriptionEndpoint(endpoint: string): Promise<CommuteConfigRow[]> {
