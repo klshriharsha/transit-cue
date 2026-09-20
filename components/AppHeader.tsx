@@ -6,7 +6,7 @@ type AppHeaderProps = {
 
 export function AppHeader({ bootstrapping, on, isGranted }: AppHeaderProps) {
   return (
-    <header className="sticky top-0 z-[60] border-b border-sand-900 bg-sand-972/88 backdrop-blur-md">
+    <header className="sticky top-0 z-[60] border-b border-sand-900 bg-sand-972/88 pt-[env(safe-area-inset-top)] backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-270 items-center gap-3.5 px-[clamp(16px,4vw,28px)]">
         <div className="flex items-center gap-2.5">
           <svg className="h-6.5 w-6.5" viewBox="0 0 512 512" role="img" aria-label="TransitCue">
