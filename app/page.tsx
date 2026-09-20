@@ -43,6 +43,7 @@ export default function TransitCuePage() {
   const needsPermission = !push.granted
   const isGranted = push.granted
   const alertCount = commute.savedConfigs.length
+  const activeAlertCount = commute.savedConfigs.filter((config) => !config.paused).length
   const hasAlerts = alertCount > 0
   const atCapacity = alertCount >= MAX_COMMUTE_CONFIGS
   const alertsLoading = bootstrapping || commute.isLoading
@@ -114,7 +115,7 @@ export default function TransitCuePage() {
             on={on}
             busy={push.busy}
             hasAlerts={hasAlerts}
-            alertCount={alertCount}
+            activeAlertCount={activeAlertCount}
             onToggle={() => (on ? push.unsubscribe() : push.subscribe())}
           />
         )}

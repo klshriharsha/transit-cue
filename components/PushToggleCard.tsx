@@ -2,11 +2,18 @@ type PushToggleCardProps = {
   on: boolean
   busy: boolean
   hasAlerts: boolean
-  alertCount: number
+  activeAlertCount: number
   onToggle: () => void
 }
 
-export function PushToggleCard({ on, busy, hasAlerts, alertCount, onToggle }: PushToggleCardProps) {
+function statusMessage(on: boolean, hasAlerts: boolean, activeAlertCount: number): string {
+  if (!on) return 'Paused. Your alerts are kept, but nothing will be pushed.'
+  if (!hasAlerts) return 'Ready — add your first alert below.'
+  if (activeAlertCount === 0) return 'All alerts are paused — nothing will be pushed.'
+  return `Delivering ${activeAlertCount} scheduled alert${activeAlertCount === 1 ? '' : 's'} to this device.`
+}
+
+export function PushToggleCard({ on, busy, hasAlerts, activeAlertCount, onToggle }: PushToggleCardProps) {
   return (
     <section className="mb-5 flex flex-wrap items-center gap-3.5 rounded-2xl border border-sand-900 bg-sand-1000 py-4 px-4.5 shadow-card">
       <div className="min-w-0 flex-[1_1_240px]">
@@ -14,13 +21,7 @@ export function PushToggleCard({ on, busy, hasAlerts, alertCount, onToggle }: Pu
           step 1 of 2
         </div>
         <div className="text-[15px] font-semibold">Push notifications</div>
-        <div className="mt-0.75 text-[13.5px] text-ink-520">
-          {on
-            ? hasAlerts
-              ? `Delivering ${alertCount} scheduled alert${alertCount === 1 ? '' : 's'} to this device.`
-              : 'Ready — add your first alert below.'
-            : 'Paused. Your alerts are kept, but nothing will be pushed.'}
-        </div>
+        <div className="mt-0.75 text-[13.5px] text-ink-520">{statusMessage(on, hasAlerts, activeAlertCount)}</div>
       </div>
       <button
         onClick={onToggle}
