@@ -23,7 +23,9 @@ export function AppHeader({ bootstrapping, on, isGranted }: AppHeaderProps) {
           </svg>
           <span className="text-lg font-bold tracking-[-0.02em]">TransitCue</span>
         </div>
-        <span className="pt-0.5 font-mono text-[11px] tracking-[0.1em] text-sand-600 uppercase">transit nudges</span>
+        <span className="hidden pt-0.5 font-mono text-[11px] tracking-[0.1em] text-sand-600 uppercase min-[450px]:block">
+          transit nudges
+        </span>
         <div className="flex-1" />
         <div className="flex items-center gap-2 rounded-full border border-sand-900 bg-sand-1000 py-1.5 pr-3 pl-2.5">
           {bootstrapping ? (

@@ -85,6 +85,8 @@ body {
   padding: 0;
   background: var(--color-sand-972);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 * {
