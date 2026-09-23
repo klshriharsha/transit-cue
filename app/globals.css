@@ -79,6 +79,10 @@
   --animate-pulse-soft: onw-pulse 1.1s ease-in-out infinite;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   margin: 0;

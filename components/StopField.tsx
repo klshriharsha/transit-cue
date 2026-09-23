@@ -103,7 +103,7 @@ export function StopField({ id, label, placeholder, variant, value, onChange }: 
         autoComplete="off"
         placeholder={placeholder}
         value={query}
-        className={`w-full rounded-xl border border-sand-880 bg-sand-990 py-3.25 px-3.5 text-[15px] text-ink-240 outline-none ${focusRing}`}
+        className={`h-9.5 w-full rounded-xl border border-sand-880 bg-sand-990 px-3.5 py-0 text-[15px] text-ink-240 outline-none ${focusRing}`}
         onChange={(e) => {
           const next = e.target.value
           setQuery(next)
@@ -130,21 +130,23 @@ export function StopField({ id, label, placeholder, variant, value, onChange }: 
       />
       {showDropdown && (
         <div className="absolute top-[calc(100%+6px)] right-0 left-0 z-40 animate-in-140 overflow-hidden rounded-[14px] border border-sand-880 bg-sand-1000 shadow-dropdown">
-          {results.map((s, i) => (
-            <button
-              key={s.id}
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onMouseEnter={() => setHighlight(i)}
-              onClick={() => select(s)}
-              className={`block w-full border-b border-sand-950 py-2.75 px-3.5 text-left ${i === highlight ? 'bg-teal-hover-bg' : 'bg-sand-1000'}`}
-            >
-              <span className="block text-[14.5px] font-medium text-ink-240">{s.name}</span>
-              <span className="mt-0.5 block overflow-hidden font-mono text-[11px] text-ellipsis whitespace-nowrap text-sand-600">
-                stop
-              </span>
-            </button>
-          ))}
+          <div className="max-h-72 overflow-y-auto">
+            {results.map((s, i) => (
+              <button
+                key={s.id}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseEnter={() => setHighlight(i)}
+                onClick={() => select(s)}
+                className={`block w-full border-b border-sand-950 py-2.75 px-3.5 text-left ${i === highlight ? 'bg-teal-hover-bg' : 'bg-sand-1000'}`}
+              >
+                <span className="block text-[14.5px] font-medium text-ink-240">{s.name}</span>
+                <span className="mt-0.5 block overflow-hidden font-mono text-[11px] text-ellipsis whitespace-nowrap text-sand-600">
+                  stop
+                </span>
+              </button>
+            ))}
+          </div>
           <div className="bg-sand-980 px-3.5 py-2 font-mono text-[10px] tracking-[0.08em] text-sand-700 uppercase">
             {sourceNote}
           </div>

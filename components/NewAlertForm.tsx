@@ -81,14 +81,21 @@ export function NewAlertForm({
           />
         </div>
 
-        <div className="flex flex-none items-center">
-          <button
-            onClick={onSwap}
-            aria-label="Swap stops"
-            className="h-9.5 w-9.5 rounded-[10px] border border-sand-880 bg-sand-990 text-[15px] leading-none text-ink-420 hover:border-sand-800 hover:bg-sand-950"
-          >
-            ⇅
-          </button>
+        <div className="flex flex-none flex-col">
+          {/* Invisible spacer matching the "From stop" label so the button
+              below centers on the two inputs, not on the labels-plus-inputs stack. */}
+          <span aria-hidden="true" className="invisible mb-1.5 block font-mono text-[10.5px] tracking-[0.12em] uppercase">
+            From stop
+          </span>
+          <div className="flex flex-1 items-center">
+            <button
+              onClick={onSwap}
+              aria-label="Swap stops"
+              className="h-9.5 w-9.5 rounded-[10px] border border-sand-880 bg-sand-990 text-[15px] leading-none text-ink-420 hover:border-sand-800 hover:bg-sand-950"
+            >
+              ⇅
+            </button>
+          </div>
         </div>
       </div>
 
@@ -113,7 +120,7 @@ export function NewAlertForm({
             // the two stay consistent. Stored value is always 24h "HH:MM".
             value={pushTime}
             onChange={(e) => onPushTimeChange(e.target.value || currentClock())}
-            className="w-full rounded-xl border border-sand-880 bg-sand-990 px-3 py-2.75 font-mono text-xl font-medium tracking-[-0.01em] text-ink-240 outline-none focus:border-teal-accent focus:shadow-[0_0_0_3px_oklch(0.55_0.11_195_/_13%)]"
+            className="h-9.5 w-full rounded-xl border border-sand-880 bg-sand-990 px-3 py-0 font-mono text-xl font-medium tracking-[-0.01em] text-ink-240 outline-none focus:border-teal-accent focus:shadow-[0_0_0_3px_oklch(0.55_0.11_195_/_13%)]"
           />
         </div>
         <div className="flex-[1_1_190px]">
@@ -141,7 +148,7 @@ export function NewAlertForm({
       <button
         onClick={onSave}
         disabled={!canSave || isSaving}
-        className={`mt-5 w-full rounded-xl border-0 p-3.75 text-[15px] font-semibold text-teal-on-accent ${
+        className={`mt-5 h-9.5 w-full rounded-xl border-0 px-3.75 py-0 text-[15px] font-semibold text-teal-on-accent ${
           canSave ? 'cursor-pointer bg-teal-deep' : 'cursor-not-allowed bg-sand-880'
         }`}
       >
