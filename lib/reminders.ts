@@ -77,7 +77,7 @@ async function sendReminderForConfig(commuteConfig: CommuteConfigWithSubscriptio
       body: preview.body,
       icon: '/icons/icon.svg',
       badge: '/icons/icon.svg',
-      tag: 'transitcue-reminder',
+      tag: `transitcue-reminder-${commuteConfig.id}`,
     },
   })
 
