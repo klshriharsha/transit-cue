@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { MAX_STATION_QUERY_LENGTH } from '@/lib/limits'
 import type { Station } from '@/lib/types'
 
 const MIN_QUERY_LENGTH = 2
@@ -101,6 +102,7 @@ export function StopField({ id, label, placeholder, variant, value, onChange }: 
         id={id}
         type="text"
         autoComplete="off"
+        maxLength={MAX_STATION_QUERY_LENGTH}
         placeholder={placeholder}
         value={query}
         className={`h-9.5 w-full rounded-xl border border-sand-880 bg-sand-990 px-3.5 py-0 text-[15px] text-ink-240 outline-none ${focusRing}`}

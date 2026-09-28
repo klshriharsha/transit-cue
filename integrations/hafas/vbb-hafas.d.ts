@@ -1,5 +1,7 @@
 declare module 'vbb-hafas' {
-  import type { HafasClient } from 'hafas-client'
+  import type { HafasClient, Profile } from 'hafas-client'
 
-  export function createVbbHafas(userAgent: string): HafasClient
+  export const defaults: { profile: Profile }
+
+  export function createVbbHafas(userAgent: string, opt?: { profile?: Profile }): HafasClient
 }

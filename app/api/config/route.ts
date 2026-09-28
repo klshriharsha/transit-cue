@@ -3,18 +3,19 @@ import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-handler'
 import { CommuteConfigLimitError, commuteConfigStore, type CommuteConfigRow } from '@/integrations/supabase/commuteConfigStore'
 import { subscriptionStore } from '@/integrations/supabase/subscriptionStore'
+import { MAX_PUSH_ENDPOINT_LENGTH, MAX_PUSH_KEY_LENGTH, MAX_STATION_ID_LENGTH, MAX_STATION_NAME_LENGTH } from '@/lib/limits'
 
 const stationSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
+  id: z.string().min(1).max(MAX_STATION_ID_LENGTH),
+  name: z.string().min(1).max(MAX_STATION_NAME_LENGTH),
 })
 
 const configSchema = z.object({
-  clientId: z.string().min(1),
-  endpoint: z.url(),
+  clientId: z.uuid(),
+  endpoint: z.url().max(MAX_PUSH_ENDPOINT_LENGTH),
   keys: z.object({
-    auth: z.string().min(1),
-    p256dh: z.string().min(1),
+    auth: z.string().min(1).max(MAX_PUSH_KEY_LENGTH),
+    p256dh: z.string().min(1).max(MAX_PUSH_KEY_LENGTH),
   }),
   origin: stationSchema,
   destination: stationSchema,
@@ -71,13 +72,13 @@ async function handlePost(request: NextRequest) {
 }
 
 async function handleGet(request: NextRequest) {
-  const endpoint = request.nextUrl.searchParams.get('endpoint')
+  const result = z.url().max(MAX_PUSH_ENDPOINT_LENGTH).safeParse(request.nextUrl.searchParams.get('endpoint'))
 
-  if (!endpoint) {
+  if (!result.success) {
     return NextResponse.json({ error: 'endpoint query parameter is required.' }, { status: 400 })
   }
 
-  const commuteConfigs = await commuteConfigStore.listBySubscriptionEndpoint(endpoint)
+  const commuteConfigs = await commuteConfigStore.listBySubscriptionEndpoint(result.data)
 
   return NextResponse.json({ configs: commuteConfigs.map(serializeConfig) })
 }

@@ -2,14 +2,15 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-handler'
 import { subscriptionStore } from '@/integrations/supabase/subscriptionStore'
+import { MAX_PUSH_ENDPOINT_LENGTH, MAX_PUSH_KEY_LENGTH } from '@/lib/limits'
 
 const bodySchema = z.object({
-  clientId: z.string().min(1),
+  clientId: z.uuid(),
   subscription: z.object({
-    endpoint: z.url(),
+    endpoint: z.url().max(MAX_PUSH_ENDPOINT_LENGTH),
     keys: z.object({
-      auth: z.string().min(1),
-      p256dh: z.string().min(1),
+      auth: z.string().min(1).max(MAX_PUSH_KEY_LENGTH),
+      p256dh: z.string().min(1).max(MAX_PUSH_KEY_LENGTH),
     }),
   }),
 })

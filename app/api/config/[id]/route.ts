@@ -5,17 +5,23 @@ import { commuteConfigStore } from '@/integrations/supabase/commuteConfigStore'
 import { subscriptionStore } from '@/integrations/supabase/subscriptionStore'
 import { serializeConfig } from '@/app/api/config/route'
 
+const idSchema = z.uuid()
+
 const deleteSchema = z.object({
-  clientId: z.string().min(1),
+  clientId: z.uuid(),
 })
 
 const patchSchema = z.object({
-  clientId: z.string().min(1),
+  clientId: z.uuid(),
   paused: z.boolean(),
 })
 
 async function handleDelete(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+
+  if (!idSchema.safeParse(id).success) {
+    return NextResponse.json({ error: 'A valid commute config id is required.' }, { status: 400 })
+  }
 
   let body: unknown
 
@@ -44,6 +50,10 @@ async function handleDelete(request: NextRequest, { params }: { params: Promise<
 
 async function handlePatch(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+
+  if (!idSchema.safeParse(id).success) {
+    return NextResponse.json({ error: 'A valid commute config id is required.' }, { status: 400 })
+  }
 
   let body: unknown
 
