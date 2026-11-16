@@ -1,6 +1,7 @@
 import { MAX_COMMUTE_CONFIGS } from '@/hooks/useCommuteConfig'
 import type { NotificationPreviewState } from '@/hooks/useNotificationPreview'
-import { currentClock, DAYS, daysLabel } from '@/lib/format'
+import { currentClock, DAYS, daysLabel, windowEnd } from '@/lib/format'
+import { MAX_WINDOW_MINUTES } from '@/lib/limits'
 import type { Station } from '@/lib/types'
 import { NotificationPreviewCard } from './NotificationPreviewCard'
 import { StopField } from './StopField'
@@ -14,8 +15,10 @@ type NewAlertFormProps = {
   swapKey: number
   previewState: NotificationPreviewState
   onRefreshPreview: () => void
-  pushTime: string
-  onPushTimeChange: (value: string) => void
+  windowStart: string
+  onWindowStartChange: (value: string) => void
+  windowMinutes: number
+  onWindowMinutesChange: (value: number) => void
   clockHint: string
   days: number[]
   onToggleDay: (day: number) => void
@@ -26,6 +29,9 @@ type NewAlertFormProps = {
   formatClock: (value: string | Date) => string
 }
 
+// Window lengths offered in the form. The API accepts any 1..MAX_WINDOW_MINUTES.
+const WINDOW_LENGTH_OPTIONS = [5, 10, MAX_WINDOW_MINUTES]
+
 export function NewAlertForm({
   fromStation,
   toStation,
@@ -35,8 +41,10 @@ export function NewAlertForm({
   swapKey,
   previewState,
   onRefreshPreview,
-  pushTime,
-  onPushTimeChange,
+  windowStart,
+  onWindowStartChange,
+  windowMinutes,
+  onWindowMinutesChange,
   clockHint,
   days,
   onToggleDay,
@@ -110,7 +118,7 @@ export function NewAlertForm({
       <div className="flex flex-wrap items-end gap-4.5">
         <div className="flex-[0_1_150px]">
           <label htmlFor="onw-time" className="mb-1.5 block font-mono text-[10.5px] tracking-[0.12em] text-sand-600 uppercase">
-            Push at ({clockHint})
+            Live from ({clockHint})
           </label>
           <input
             id="onw-time"
@@ -118,10 +126,34 @@ export function NewAlertForm({
             // The native picker renders in the browser's locale; every other
             // visible time goes through formatClock() with that same locale so
             // the two stay consistent. Stored value is always 24h "HH:MM".
-            value={pushTime}
-            onChange={(e) => onPushTimeChange(e.target.value || currentClock())}
+            value={windowStart}
+            onChange={(e) => onWindowStartChange(e.target.value || currentClock())}
             className="h-9.5 w-full rounded-xl border border-sand-880 bg-sand-990 px-3 py-0 font-mono text-xl font-medium tracking-[-0.01em] text-ink-240 outline-none focus:border-teal-accent focus:shadow-[0_0_0_3px_oklch(0.55_0.11_195_/_13%)]"
           />
+        </div>
+        <div className="flex-[0_1_150px]">
+          <div id="onw-window-label" className="mb-1.5 font-mono text-[10.5px] tracking-[0.12em] text-sand-600 uppercase">
+            For (min)
+          </div>
+          <div role="radiogroup" aria-labelledby="onw-window-label" className="flex gap-1.25">
+            {WINDOW_LENGTH_OPTIONS.map((minutes) => {
+              const active = windowMinutes === minutes
+              return (
+                <button
+                  key={minutes}
+                  role="radio"
+                  aria-checked={active}
+                  aria-label={minutes + ' minutes'}
+                  onClick={() => onWindowMinutesChange(minutes)}
+                  className={`h-9.5 min-w-0 flex-1 rounded-[10px] border font-mono text-[13px] font-semibold ${
+                    active ? 'border-teal-accent bg-teal-accent text-teal-on-accent' : 'border-sand-880 bg-sand-990 text-ink-500'
+                  }`}
+                >
+                  {minutes}
+                </button>
+              )
+            })}
+          </div>
         </div>
         <div className="flex-[1_1_190px]">
           <div className="mb-1.5 font-mono text-[10.5px] tracking-[0.12em] text-sand-600 uppercase">Repeat</div>
@@ -164,7 +196,7 @@ export function NewAlertForm({
         {atCapacity
           ? 'Delete an alert on the right to add another.'
           : canSave
-            ? formatClock(pushTime) + ' · ' + daysLabel(days)
+            ? formatClock(windowStart) + '–' + formatClock(windowEnd(windowStart, windowMinutes)) + ' · ' + daysLabel(days)
             : 'Pick a suggestion for both stops to continue.'}
       </div>
     </section>

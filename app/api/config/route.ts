@@ -3,7 +3,13 @@ import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-handler'
 import { CommuteConfigLimitError, commuteConfigStore, type CommuteConfigRow } from '@/integrations/supabase/commuteConfigStore'
 import { subscriptionStore } from '@/integrations/supabase/subscriptionStore'
-import { MAX_PUSH_ENDPOINT_LENGTH, MAX_PUSH_KEY_LENGTH, MAX_STATION_ID_LENGTH, MAX_STATION_NAME_LENGTH } from '@/lib/limits'
+import {
+  MAX_PUSH_ENDPOINT_LENGTH,
+  MAX_PUSH_KEY_LENGTH,
+  MAX_STATION_ID_LENGTH,
+  MAX_STATION_NAME_LENGTH,
+  MAX_WINDOW_MINUTES,
+} from '@/lib/limits'
 
 const stationSchema = z.object({
   id: z.string().min(1).max(MAX_STATION_ID_LENGTH),
@@ -19,7 +25,8 @@ const configSchema = z.object({
   }),
   origin: stationSchema,
   destination: stationSchema,
-  pushTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'pushTime must be in HH:MM format'),
+  windowStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'windowStart must be in HH:MM format'),
+  windowMinutes: z.number().int().min(1).max(MAX_WINDOW_MINUTES),
   repeatDays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
 })
 
@@ -28,7 +35,8 @@ export function serializeConfig(commuteConfig: CommuteConfigRow) {
     id: commuteConfig.id,
     origin: { id: commuteConfig.originId, name: commuteConfig.originName },
     destination: { id: commuteConfig.destinationId, name: commuteConfig.destinationName },
-    pushTime: commuteConfig.pushTime,
+    windowStart: commuteConfig.windowStart,
+    windowMinutes: commuteConfig.windowMinutes,
     repeatDays: commuteConfig.repeatDays,
     paused: commuteConfig.paused,
   }
@@ -49,7 +57,7 @@ async function handlePost(request: NextRequest) {
     return NextResponse.json({ error: 'A valid commute configuration is required.' }, { status: 400 })
   }
 
-  const { clientId, endpoint, keys, origin, destination, pushTime, repeatDays } = result.data
+  const { clientId, endpoint, keys, origin, destination, windowStart, windowMinutes, repeatDays } = result.data
   const subscription = await subscriptionStore.upsert(clientId, { endpoint, keys })
 
   try {
@@ -58,7 +66,8 @@ async function handlePost(request: NextRequest) {
       originName: origin.name,
       destinationId: destination.id,
       destinationName: destination.name,
-      pushTime,
+      windowStart,
+      windowMinutes,
       repeatDays,
     })
 

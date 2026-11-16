@@ -2,15 +2,25 @@ import { config } from '@/lib/config'
 import { logger } from '@/lib/logger'
 import type { Station } from '@/lib/types'
 import { getNextDepartures, type UpcomingDeparture } from '@/integrations/hafas/departures'
-import { commuteConfigStore, type CommuteConfigWithSubscription } from '@/integrations/supabase/commuteConfigStore'
+import { commuteConfigStore, type DueWindow } from '@/integrations/supabase/commuteConfigStore'
 import { subscriptionStore } from '@/integrations/supabase/subscriptionStore'
+import { windowRunStore } from '@/integrations/supabase/windowRunStore'
 import { webpush } from '@/integrations/webpush'
+import { clockToMinutes, windowEnd } from '@/lib/format'
 
 const clockFormatter = new Intl.DateTimeFormat('en-GB', {
   timeZone: config.TIMEZONE,
   hour: '2-digit',
   minute: '2-digit',
-  hour12: false,
+  hourCycle: 'h23',
+})
+
+// en-CA formats dates as YYYY-MM-DD, which is what the DB `date` column expects.
+const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: config.TIMEZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
 })
 
 const weekdayFormatter = new Intl.DateTimeFormat('en-US', {
@@ -18,24 +28,38 @@ const weekdayFormatter = new Intl.DateTimeFormat('en-US', {
   weekday: 'short',
 })
 
-// Matches the `repeat_days` bitmask convention: 0 = Sunday .. 6 = Saturday.
 // Socket timeout for each push-service request, so a slow or unresponsive endpoint can't hold the
 // cron run open until maxDuration.
 const PUSH_TIMEOUT_MS = 5000
 
-// How long the push service may hold an undelivered reminder before discarding it. Departures
-// in the notification are only useful for a few minutes.
-const PUSH_TTL_SECONDS = 10 * 60
+// How long the push service may hold the closing "not live" push. It only matters while the live
+// notification it replaces could still be on screen.
+const ENDED_PUSH_TTL_SECONDS = 5 * 60
 
+// Floor for the TTL of live updates, so even the last-minute update has time to be delivered.
+const MIN_LIVE_PUSH_TTL_SECONDS = 60
+
+const NO_DEPARTURES_TEXT = 'No upcoming departures found.'
+
+// Matches the `repeat_days` bitmask convention: 0 = Sunday .. 6 = Saturday.
 const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
 
-function currentTime(): string {
-  return clockFormatter.format(new Date())
+type ZonedNow = {
+  /** Minutes after midnight. */
+  minute: number
+  /** `Date.getDay()` value: 0 = Sunday .. 6 = Saturday, matching the `repeat_days` bitmask. */
+  day: number
+  /** YYYY-MM-DD */
+  date: string
 }
 
-/** Today's day-of-week in config.TIMEZONE, not the server's local zone. */
-function currentDayOfWeek(): number {
-  return WEEKDAY_INDEX[weekdayFormatter.format(new Date())]
+/** The current minute, weekday and date in config.TIMEZONE, not the server's local zone. */
+function zonedNow(now = new Date()): ZonedNow {
+  return {
+    minute: clockToMinutes(clockFormatter.format(now)),
+    day: WEEKDAY_INDEX[weekdayFormatter.format(now)],
+    date: dateFormatter.format(now),
+  }
 }
 
 function formatDepartureLine(departure: UpcomingDeparture): string {
@@ -68,24 +92,40 @@ export async function buildNotificationPreview(origin: Station, destination: Sta
   return { title: `${origin.name} → ${destination.name}`, body }
 }
 
-async function sendReminderForConfig(commuteConfig: CommuteConfigWithSubscription): Promise<boolean> {
-  const preview = await buildNotificationPreview(
-    { id: commuteConfig.originId, name: commuteConfig.originName },
-    { id: commuteConfig.destinationId, name: commuteConfig.destinationName },
-  )
+type PushContent = {
+  title: string
+  body: string
+  /** Live notifications offer "Stop for today", and dismissing them stops further updates. */
+  live: boolean
+  /** Updates replace the notification quietly; only the first push of a window should alert. */
+  silent: boolean
+}
 
-  if (!preview) {
-    logger.info({ commuteConfigId: commuteConfig.id }, 'No upcoming departures to notify about')
-    return false
-  }
+function routeTitle(window: DueWindow): string {
+  return `${window.originName} → ${window.destinationName}`
+}
 
+/**
+ * Sends one push for `window`, replacing whatever notification this alert currently shows (same
+ * `tag`). Returns false if the push service rejected it; prunes the subscription on 404/410.
+ */
+async function sendWindowPush(window: DueWindow, content: PushContent, ttlSeconds: number): Promise<boolean> {
   const payload = JSON.stringify({
-    title: preview.title,
+    title: content.title,
     options: {
-      body: preview.body,
+      body: content.body,
       icon: '/icons/icon.svg',
       badge: '/icons/icon.svg',
-      tag: `transitcue-reminder-${commuteConfig.id}`,
+      tag: `transitcue-reminder-${window.id}`,
+      renotify: false,
+      silent: content.silent,
+      // Desktop browsers otherwise tuck the notification away after a few seconds, which defeats
+      // a live board. Mobile platforms ignore this.
+      requireInteraction: content.live,
+      actions: content.live ? [{ action: 'stop', title: 'Stop for today' }] : [],
+      // Read by the service worker: `sentAt` lets it drop an update that arrives after a newer
+      // one; `configId`/`windowDate` identify the window to stop on dismissal.
+      data: { configId: window.id, windowDate: window.windowDate, sentAt: Date.now(), live: content.live },
     },
   })
 
@@ -93,12 +133,11 @@ async function sendReminderForConfig(commuteConfig: CommuteConfigWithSubscriptio
     // web-push defaults to `normal` urgency and a 4-week TTL. Push services hold normal-urgency
     // messages while the device is idle (Android Doze, APNs power-considerate priority) and
     // deliver them in a batch later, so alerts arrived hours late. `high` asks for immediate
-    // delivery, and the short TTL drops a reminder outright rather than delivering stale
-    // departures once the window has passed.
-    await webpush.sendNotification(commuteConfig.subscription, payload, {
+    // delivery, and the short TTL drops a push outright rather than delivering it after it's moot.
+    await webpush.sendNotification(window.subscription, payload, {
       timeout: PUSH_TIMEOUT_MS,
       urgency: 'high',
-      TTL: PUSH_TTL_SECONDS,
+      TTL: ttlSeconds,
     })
     return true
   } catch (error) {
@@ -109,32 +148,115 @@ async function sendReminderForConfig(commuteConfig: CommuteConfigWithSubscriptio
     const statusCode = (error as { statusCode?: number }).statusCode
 
     if (statusCode === 404 || statusCode === 410) {
-      logger.info(
-        { commuteConfigId: commuteConfig.id, subscriptionId: commuteConfig.subscription.id },
-        'Pruning expired push subscription',
-      )
-      await subscriptionStore.delete(commuteConfig.subscription.id).catch((deleteError: unknown) => {
-        logger.warn({ err: deleteError, commuteConfigId: commuteConfig.id }, 'Failed to prune expired push subscription')
+      logger.info({ commuteConfigId: window.id, subscriptionId: window.subscription.id }, 'Pruning expired push subscription')
+      await subscriptionStore.delete(window.subscription.id).catch((deleteError: unknown) => {
+        logger.warn({ err: deleteError, commuteConfigId: window.id }, 'Failed to prune expired push subscription')
       })
       return false
     }
 
-    logger.warn({ err: error, commuteConfigId: commuteConfig.id }, 'Failed to send transit reminder push')
+    logger.warn({ err: error, commuteConfigId: window.id }, 'Failed to send transit push')
     return false
   }
 }
 
-export type TransitReminderResult = {
-  attempted: number
+type WindowOutcome = 'sent' | 'unchanged' | 'failed'
+
+/** Minutes left in an open window. Handles windows that run past midnight. */
+function minutesRemaining(window: DueWindow, now: ZonedNow): number {
+  const elapsed = (((now.minute - clockToMinutes(window.windowStart)) % 1440) + 1440) % 1440
+  return window.windowMinutes - elapsed
+}
+
+/** Pushes the current board for an open window, but only if it differs from what was last pushed. */
+async function pushLiveBoard(window: DueWindow, departures: Promise<UpcomingDeparture[]>, now: ZonedNow): Promise<WindowOutcome> {
+  const lines = formatDeparturesMessage(await departures) ?? NO_DEPARTURES_TEXT
+
+  if (lines === window.lastBody) return 'unchanged'
+
+  const sent = await sendWindowPush(
+    window,
+    {
+      title: routeTitle(window),
+      body: `${lines}\nLive until ${windowEnd(window.windowStart, window.windowMinutes)}`,
+      live: true,
+      silent: window.lastBody !== null,
+    },
+    // A live update is useful until the window closes; the service worker discards any that
+    // arrive after a newer one.
+    Math.max(MIN_LIVE_PUSH_TTL_SECONDS, minutesRemaining(window, now) * 60),
+  )
+
+  if (!sent) return 'failed'
+
+  await windowRunStore.recordSent(window.id, window.windowDate, lines)
+  return 'sent'
+}
+
+/** Replaces the live notification of a window that just closed with a clearly-stale version. */
+async function pushWindowEnded(window: DueWindow): Promise<WindowOutcome> {
+  const sent = await sendWindowPush(
+    window,
+    {
+      title: routeTitle(window),
+      body: `Not live since ${windowEnd(window.windowStart, window.windowMinutes)} · times may have changed\n${window.lastBody ?? ''}`.trim(),
+      live: false,
+      silent: true,
+    },
+    ENDED_PUSH_TTL_SECONDS,
+  )
+
+  // On failure, leave the run unfinalized so the next tick retries (the DB only offers it for
+  // a few minutes after the window closes).
+  if (!sent) return 'failed'
+
+  await windowRunStore.finalize(window.id, window.windowDate)
+  return 'sent'
+}
+
+export type WindowRunResult = {
+  /** Windows that needed attention this minute (open, or just closed). */
+  due: number
   sent: number
+  /** Open windows whose board hadn't changed since the last push, so nothing was sent. */
+  unchanged: number
   failed: number
 }
 
-/** Sends reminders for every commute config due right now: pushTime matches the current HH:MM in config.TIMEZONE and today's day-of-week is in its repeat days. */
-export async function runDueReminders(): Promise<TransitReminderResult> {
-  const commuteConfigs = await commuteConfigStore.dueAt(currentTime(), currentDayOfWeek())
-  const results = await Promise.allSettled(commuteConfigs.map((commuteConfig) => sendReminderForConfig(commuteConfig)))
-  const sent = results.filter((result) => result.status === 'fulfilled' && result.value).length
+/**
+ * Runs one cron tick: for every open window, pushes the departure board if it changed since the
+ * last push; for every window that just closed, marks its notification as no longer live.
+ */
+export async function runDueWindows(): Promise<WindowRunResult> {
+  const now = zonedNow()
+  const windows = await commuteConfigStore.dueWindows(now.minute, now.day, now.date)
 
-  return { attempted: commuteConfigs.length, sent, failed: commuteConfigs.length - sent }
+  // Several alerts (often from different riders) can share a route; look each route up once.
+  const departuresByRoute = new Map<string, Promise<UpcomingDeparture[]>>()
+  const departuresFor = (window: DueWindow) => {
+    const key = `${window.originId}::${window.destinationId}`
+    let departures = departuresByRoute.get(key)
+    if (!departures) {
+      departures = getNextDepartures(window.originId, window.destinationId)
+      departuresByRoute.set(key, departures)
+    }
+    return departures
+  }
+
+  const results = await Promise.allSettled(
+    windows.map((window) => (window.phase === 'live' ? pushLiveBoard(window, departuresFor(window), now) : pushWindowEnded(window))),
+  )
+
+  const outcomes = results.map((result, i) => {
+    if (result.status === 'fulfilled') return result.value
+    logger.warn({ err: result.reason, commuteConfigId: windows[i].id }, 'Failed to process commute window')
+    return 'failed'
+  })
+
+  return {
+    due: windows.length,
+    sent: outcomes.filter((outcome) => outcome === 'sent').length,
+    unchanged: outcomes.filter((outcome) => outcome === 'unchanged').length,
+    failed: outcomes.filter((outcome) => outcome === 'failed').length,
+  }
 }

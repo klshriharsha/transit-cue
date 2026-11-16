@@ -12,7 +12,8 @@ import { MAX_COMMUTE_CONFIGS, useCommuteConfig } from '@/hooks/useCommuteConfig'
 import { useNotificationPreview } from '@/hooks/useNotificationPreview'
 import { usePushSubscription } from '@/hooks/usePushSubscription'
 import { useToast } from '@/hooks/useToast'
-import { currentClock, DEFAULT_DAYS } from '@/lib/format'
+import { currentClock, DEFAULT_DAYS, windowEnd } from '@/lib/format'
+import { DEFAULT_WINDOW_MINUTES } from '@/lib/limits'
 import type { Station } from '@/lib/types'
 
 export default function TransitCuePage() {
@@ -27,11 +28,12 @@ export default function TransitCuePage() {
   // Starts unset so the picker's SSR markup is stable, then snaps to the viewer's
   // current time once mounted — set during render (like StopField's prop sync
   // below) instead of a useEffect, so there's no extra commit-then-correct step.
-  const [pushTime, setPushTime] = useState<string | null>(null)
-  if (mounted && pushTime === null) {
-    setPushTime(currentClock())
+  const [windowStart, setWindowStart] = useState<string | null>(null)
+  if (mounted && windowStart === null) {
+    setWindowStart(currentClock())
   }
-  const activePushTime = pushTime ?? '08:15'
+  const activeWindowStart = windowStart ?? '08:15'
+  const [windowMinutes, setWindowMinutes] = useState(DEFAULT_WINDOW_MINUTES)
   const [days, setDays] = useState<number[]>(DEFAULT_DAYS)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   // Bumped on every StopField swap so the two fields re-sync their internal query text from
@@ -51,7 +53,7 @@ export default function TransitCuePage() {
 
   const handleSave = async () => {
     if (!canSave || !fromStation || !toStation) return
-    const result = await commute.add(fromStation, toStation, activePushTime, days)
+    const result = await commute.add(fromStation, toStation, activeWindowStart, windowMinutes, days)
     if (result.config) {
       setFromStation(null)
       setToStation(null)
@@ -59,7 +61,7 @@ export default function TransitCuePage() {
       // id change, so clearing the station state above doesn't clear the visible input text.
       // Remounting both fields (same trick the swap button uses) resets that text too.
       setSwapKey((k) => k + 1)
-      flash('Alert saved · ' + formatClock(activePushTime))
+      flash('Alert saved · ' + formatClock(activeWindowStart) + '–' + formatClock(windowEnd(activeWindowStart, windowMinutes)))
     } else {
       flash(result.error)
     }
@@ -130,8 +132,10 @@ export default function TransitCuePage() {
             swapKey={swapKey}
             previewState={preview}
             onRefreshPreview={preview.refresh}
-            pushTime={activePushTime}
-            onPushTimeChange={setPushTime}
+            windowStart={activeWindowStart}
+            onWindowStartChange={setWindowStart}
+            windowMinutes={windowMinutes}
+            onWindowMinutesChange={setWindowMinutes}
             clockHint={clockHint}
             days={days}
             onToggleDay={handleToggleDay}

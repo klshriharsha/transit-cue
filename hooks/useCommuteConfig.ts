@@ -10,7 +10,9 @@ export type CommuteConfig = {
   id: string
   origin: Station
   destination: Station
-  pushTime: string
+  /** 24h "HH:MM" at which the live window opens. */
+  windowStart: string
+  windowMinutes: number
   repeatDays: number[]
   paused: boolean
 }
@@ -21,7 +23,8 @@ type SaveInput = {
   keys: { auth: string; p256dh: string }
   origin: Station
   destination: Station
-  pushTime: string
+  windowStart: string
+  windowMinutes: number
   repeatDays: number[]
 }
 
@@ -121,7 +124,8 @@ export function useCommuteConfig(subscription: PushSubscription | null) {
   const add = async (
     origin: Station,
     destination: Station,
-    pushTime: string,
+    windowStart: string,
+    windowMinutes: number,
     repeatDays: number[],
   ): Promise<{ config: CommuteConfig; error: null } | { config: null; error: string }> => {
     if (!subscription) {
@@ -154,7 +158,8 @@ export function useCommuteConfig(subscription: PushSubscription | null) {
         keys: { auth: keys.auth, p256dh: keys.p256dh },
         origin,
         destination,
-        pushTime,
+        windowStart,
+        windowMinutes,
         repeatDays,
       })
 

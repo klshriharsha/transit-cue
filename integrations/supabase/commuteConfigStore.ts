@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { clockToMinutes, minutesToClock } from '@/lib/format'
 import type { StoredSubscription } from '@/lib/types'
 
 export const MAX_COMMUTE_CONFIGS_PER_SUBSCRIPTION = 5
@@ -19,7 +20,10 @@ export type CommuteConfigInput = {
   originName: string
   destinationId: string
   destinationName: string
-  pushTime: string
+  /** 24h "HH:MM" (config.TIMEZONE) at which the live window opens. */
+  windowStart: string
+  /** How long the window stays live, in minutes (1..MAX_WINDOW_MINUTES). */
+  windowMinutes: number
   /** Days this alert repeats on, as `Date.getDay()` values (0 = Sunday .. 6 = Saturday). */
   repeatDays: number[]
 }
@@ -30,7 +34,8 @@ export type CommuteConfigRow = {
   originName: string
   destinationId: string
   destinationName: string
-  pushTime: string
+  windowStart: string
+  windowMinutes: number
   repeatDays: number[]
   paused: boolean
 }
@@ -39,13 +44,26 @@ export type CommuteConfigWithSubscription = CommuteConfigRow & {
   subscription: StoredSubscription & { id: string }
 }
 
+/** 'live': the window is open. 'ended': it just closed and the shown notification needs marking stale. */
+export type WindowPhase = 'live' | 'ended'
+
+/** An alert the cron must act on this minute, with its per-day window state. */
+export type DueWindow = CommuteConfigWithSubscription & {
+  phase: WindowPhase
+  /** "YYYY-MM-DD" (config.TIMEZONE) on which this window opened. */
+  windowDate: string
+  /** Departure lines last pushed during this window, or null if nothing was pushed yet. */
+  lastBody: string | null
+}
+
 type RawConfigRow = {
   id: string
   origin_id: string
   origin_name: string
   destination_id: string
   destination_name: string
-  push_time: string
+  window_start: number
+  window_minutes: number
   repeat_days: number
   paused: boolean
 }
@@ -54,14 +72,17 @@ type RawConfigRowWithSubscription = RawConfigRow & {
   subscription: { id: string; endpoint: string; p256dh: string; auth: string }
 }
 
-type RawDueConfigRow = RawConfigRow & {
+type RawDueWindowRow = RawConfigRow & {
+  phase: WindowPhase
+  window_date: string
+  last_body: string | null
   subscription_id: string
   endpoint: string
   p256dh: string
   auth: string
 }
 
-const CONFIG_COLUMNS = 'id, origin_id, origin_name, destination_id, destination_name, push_time, repeat_days, paused'
+const CONFIG_COLUMNS = 'id, origin_id, origin_name, destination_id, destination_name, window_start, window_minutes, repeat_days, paused'
 const CONFIG_WITH_SUBSCRIPTION_COLUMNS = `${CONFIG_COLUMNS}, subscription:subscriptions(id, endpoint, p256dh, auth)`
 
 /** Packs `Date.getDay()` values into the bitmask stored in `repeat_days` (bit i == day i). */
@@ -81,7 +102,8 @@ function mapConfigRow(row: RawConfigRow): CommuteConfigRow {
     originName: row.origin_name,
     destinationId: row.destination_id,
     destinationName: row.destination_name,
-    pushTime: row.push_time,
+    windowStart: minutesToClock(row.window_start),
+    windowMinutes: row.window_minutes,
     repeatDays: maskToDays(row.repeat_days),
     paused: row.paused,
   }
@@ -98,9 +120,12 @@ function mapConfigRowWithSubscription(row: RawConfigRowWithSubscription): Commut
   }
 }
 
-function mapDueConfigRow(row: RawDueConfigRow): CommuteConfigWithSubscription {
+function mapDueWindowRow(row: RawDueWindowRow): DueWindow {
   return {
     ...mapConfigRow(row),
+    phase: row.phase,
+    windowDate: row.window_date,
+    lastBody: row.last_body,
     subscription: {
       id: row.subscription_id,
       endpoint: row.endpoint,
@@ -119,7 +144,8 @@ export const commuteConfigStore = {
         origin_name: data.originName,
         destination_id: data.destinationId,
         destination_name: data.destinationName,
-        push_time: data.pushTime,
+        window_start: clockToMinutes(data.windowStart),
+        window_minutes: data.windowMinutes,
         repeat_days: daysToMask(data.repeatDays),
       })
       .select(CONFIG_COLUMNS)
@@ -173,19 +199,33 @@ export const commuteConfigStore = {
   },
 
   /**
-   * Configs due right now: matching `pushTime` whose `repeat_days` bitmask includes
-   * `dayOfWeek` (a `Date.getDay()` value). Delegates the bitmask check to the
-   * `due_commute_configs` DB function since PostgREST's filter operators have no bitwise AND.
+   * Alerts the cron must act on right now (see the `due_commute_windows` DB function): windows
+   * that are open, plus windows that just closed and still show a live notification. All three
+   * arguments are in config.TIMEZONE: minutes after midnight, `Date.getDay()` value, "YYYY-MM-DD".
    */
-  async dueAt(pushTime: string, dayOfWeek: number): Promise<CommuteConfigWithSubscription[]> {
-    const { data, error } = await supabase.rpc('due_commute_configs', {
-      p_push_time: pushTime,
-      p_day_bit: 1 << dayOfWeek,
+  async dueWindows(nowMinute: number, dayOfWeek: number, today: string): Promise<DueWindow[]> {
+    const { data, error } = await supabase.rpc('due_commute_windows', {
+      p_now_minute: nowMinute,
+      p_day: dayOfWeek,
+      p_today: today,
     })
 
-    if (error) throw new Error(`Failed to load due commute configs: ${error.message}`)
+    if (error) throw new Error(`Failed to load due commute windows: ${error.message}`)
 
-    return (data as RawDueConfigRow[]).map(mapDueConfigRow)
+    return (data as RawDueWindowRow[]).map(mapDueWindowRow)
+  },
+
+  /** The subscription endpoint that owns a config, or null if the config doesn't exist. */
+  async endpointFor(id: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('commute_configs')
+      .select('subscription:subscriptions(endpoint)')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (error) throw new Error(`Failed to load commute config: ${error.message}`)
+
+    return (data as unknown as { subscription: { endpoint: string } } | null)?.subscription.endpoint ?? null
   },
 
   async all(): Promise<CommuteConfigWithSubscription[]> {

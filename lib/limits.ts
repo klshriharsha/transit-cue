@@ -10,3 +10,8 @@ export const MAX_STATION_NAME_LENGTH = 200
 export const MAX_PUSH_ENDPOINT_LENGTH = 1024
 /** p256dh is 87 base64url chars and auth is 22; leave headroom for padding variants. */
 export const MAX_PUSH_KEY_LENGTH = 256
+
+/** Longest live window an alert may cover. Caps push volume and VBB lookups per alert. */
+export const MAX_WINDOW_MINUTES = 15
+/** Window length offered by default, and given to alerts created before windows existed. */
+export const DEFAULT_WINDOW_MINUTES = 10

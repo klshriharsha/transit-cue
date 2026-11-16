@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { withErrorHandling } from '@/lib/api-handler'
 import { config } from '@/lib/config'
 import { logger } from '@/lib/logger'
-import { runDueReminders } from '@/lib/reminders'
+import { runDueWindows } from '@/lib/reminders'
 
 export const maxDuration = 30
 
@@ -22,7 +22,7 @@ async function handler(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const result = await runDueReminders()
+  const result = await runDueWindows()
 
   return NextResponse.json(result)
 }

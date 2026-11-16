@@ -7,7 +7,7 @@ const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().min(1, 'VAPID_PUBLIC_KEY is required'),
   VAPID_PRIVATE_KEY: z.string().min(1, 'VAPID_PRIVATE_KEY is required'),
   CRON_SECRET: z.string().min(1, 'CRON_SECRET is required'),
-  // VBB (Berlin transit) departure times are naturally in this zone; commute pushTime
+  // VBB (Berlin transit) departure times are naturally in this zone; a commute window's start
   // ("HH:MM") is compared against the current time in this zone, not the server's.
   TIMEZONE: z.string().default('Europe/Berlin'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),

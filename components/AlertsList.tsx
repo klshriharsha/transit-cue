@@ -1,5 +1,5 @@
 import { MAX_COMMUTE_CONFIGS, type CommuteConfig } from '@/hooks/useCommuteConfig'
-import { daysLabel, nextOccurrence, relativeLabel } from '@/lib/format'
+import { daysLabel, windowEnd, windowStatus, windowStatusLabel } from '@/lib/format'
 
 type AlertsListProps = {
   alertsLoading: boolean
@@ -89,7 +89,10 @@ export function AlertsList({
                     <div
                       className={`font-mono text-[22px] leading-none font-bold tracking-[-0.03em] ${paused ? 'text-ink-550' : ''}`}
                     >
-                      {formatClock(config.pushTime)}
+                      {formatClock(config.windowStart)}
+                    </div>
+                    <div className="mt-1 font-mono text-[11px] text-sand-620">
+                      to {formatClock(windowEnd(config.windowStart, config.windowMinutes))}
                     </div>
                     <div className="mt-1.25 font-mono text-[10px] tracking-[0.1em] text-sand-620 uppercase">
                       {daysLabel(config.repeatDays)}
@@ -113,7 +116,7 @@ export function AlertsList({
                       <div className="min-w-0 flex-1 overflow-hidden text-[14.5px] font-medium text-ellipsis whitespace-nowrap">{config.destination.name}</div>
                     </div>
                     <div className="mt-2.25 text-[12.5px] text-sand-600">
-                      {!on ? 'notifications off — no pushes' : paused ? 'paused — no pushes' : relativeLabel(nextOccurrence(config.pushTime), formatClock)}
+                      {!on ? 'notifications off — no pushes' : paused ? 'paused — no pushes' : windowStatusLabel(windowStatus(config.windowStart, config.windowMinutes, config.repeatDays), formatClock)}
                     </div>
                   </div>
                   {!pending && (

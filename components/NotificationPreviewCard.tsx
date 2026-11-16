@@ -30,7 +30,7 @@ export function NotificationPreviewCard({ state, onRefresh }: NotificationPrevie
           <span className="block h-1.5 w-1.5 rounded-full bg-teal-accent" />
           preview
         </span>
-        <span className="text-[12px] text-teal-tint-text/80">what you&apos;d see right now</span>
+        <span className="text-[12px] text-teal-tint-text/80">what you&apos;d see right now · updates live during your window</span>
         <div className="flex-1" />
         {state.status === 'ready' && (
           <button
@@ -68,7 +68,7 @@ export function NotificationPreviewCard({ state, onRefresh }: NotificationPrevie
 
       {state.status === 'ready' && state.preview === null && (
         <div className="rounded-[13px] border border-dashed border-sand-880 bg-sand-1000 px-3 py-3.5 text-[12.5px] leading-[1.5] text-sand-620">
-          No upcoming departures on this route right now — check back closer to your push time.
+          No upcoming departures on this route right now — check back closer to your window.
         </div>
       )}
 
