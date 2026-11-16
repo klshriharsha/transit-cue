@@ -23,6 +23,10 @@ const weekdayFormatter = new Intl.DateTimeFormat('en-US', {
 // cron run open until maxDuration.
 const PUSH_TIMEOUT_MS = 5000
 
+// How long the push service may hold an undelivered reminder before discarding it. Departures
+// in the notification are only useful for a few minutes.
+const PUSH_TTL_SECONDS = 10 * 60
+
 const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
 
 function currentTime(): string {
@@ -86,7 +90,16 @@ async function sendReminderForConfig(commuteConfig: CommuteConfigWithSubscriptio
   })
 
   try {
-    await webpush.sendNotification(commuteConfig.subscription, payload, { timeout: PUSH_TIMEOUT_MS })
+    // web-push defaults to `normal` urgency and a 4-week TTL. Push services hold normal-urgency
+    // messages while the device is idle (Android Doze, APNs power-considerate priority) and
+    // deliver them in a batch later, so alerts arrived hours late. `high` asks for immediate
+    // delivery, and the short TTL drops a reminder outright rather than delivering stale
+    // departures once the window has passed.
+    await webpush.sendNotification(commuteConfig.subscription, payload, {
+      timeout: PUSH_TIMEOUT_MS,
+      urgency: 'high',
+      TTL: PUSH_TTL_SECONDS,
+    })
     return true
   } catch (error) {
     // 404 Not Found / 410 Gone: the push service has permanently dropped this endpoint (the
