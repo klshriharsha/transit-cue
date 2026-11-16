@@ -17,9 +17,9 @@ name: Database migrations
 on:
   push:
     branches: [main]
-    paths: ["supabase/migrations/**", "supabase/config.toml"]
+    paths: ["supabase/migrations/**", "supabase/config.toml", ".github/workflows/db-migrations.yml"]
   pull_request:
-    paths: ["supabase/migrations/**", "supabase/config.toml"]
+    paths: ["supabase/migrations/**", "supabase/config.toml", ".github/workflows/db-migrations.yml"]
   # Lets a fresh production project be bootstrapped (or re-synced) on demand, since the
   # path filters above only fire when migration files themselves change.
   workflow_dispatch:
@@ -39,20 +39,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pinned to the same CLI version as the `supabase` devDependency in package.json, so CI
+      # behaves exactly like local `pnpm exec supabase`. `latest` silently picked up v3, which
+      # targets the local database by default and failed with ECONNREFUSED 127.0.0.1:54322.
+      # Bump both together, and check the release notes for flag changes when you do.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.116.0
 
       - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
       - name: Show pending migrations
-        run: supabase migration list
+        run: supabase migration list --linked
 
       - name: Dry run (pull requests)
         if: github.event_name == 'pull_request'
-        run: supabase db push --dry-run
+        run: supabase db push --linked --dry-run
 
       - name: Apply migrations (main)
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        run: supabase db push --yes
+        run: supabase db push --linked --yes
